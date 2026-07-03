@@ -112,7 +112,7 @@ export function KnowledgeCard({
           )}
         </div>
 
-        <CardContent className="p-5 flex flex-col flex-1">
+        <CardContent className="p-6 flex flex-col flex-1">
           {/* Meta Info */}
           <div className="flex items-center gap-3 text-xs text-muted-foreground mb-3">
             {publishedAt && (
@@ -124,13 +124,13 @@ export function KnowledgeCard({
           </div>
 
           {/* Title */}
-          <h3 className="font-heading font-semibold text-lg line-clamp-2 mb-2 group-hover:text-primary transition-colors">
+          <h3 className="font-heading font-bold text-xl leading-tight line-clamp-2 mb-3 group-hover:text-primary transition-colors">
             {title}
           </h3>
 
           {/* Description */}
           {shortDescription && (
-            <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2 mb-4 flex-1">
+            <p className="text-[15px] text-muted-foreground leading-relaxed line-clamp-2 mb-5 flex-1">
               {shortDescription}
             </p>
           )}
