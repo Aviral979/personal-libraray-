@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Save, Loader2, Image as ImageIcon, Link as LinkIcon, FileText, Video, Upload, ScanText, Copy } from "lucide-react";
+import { db } from "@/lib/firebase";
+import { collection, doc, setDoc, updateDoc, getDoc } from "firebase/firestore";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,27 +41,36 @@ export default function CreateKnowledgePage() {
 
   // Load existing data if editing
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const urlParams = new URLSearchParams(window.location.search);
-      const editId = urlParams.get("edit");
-      
-      if (editId) {
-        const localData = JSON.parse(localStorage.getItem("library_items") || "[]");
-        const editItem = localData.find((item: any) => item.id === editId);
+    const fetchEditData = async () => {
+      if (typeof window !== "undefined") {
+        const urlParams = new URLSearchParams(window.location.search);
+        const editId = urlParams.get("edit");
         
-        if (editItem) {
-          setFormData({
-            title: editItem.title || "",
-            subtitle: editItem.subtitle || "",
-            shortDescription: editItem.shortDescription || "",
-            status: editItem.status || "DRAFT",
-            visibility: editItem.visibility || "PUBLIC",
-            category: editItem.category || "",
-            link: editItem.link || "",
-          });
+        if (editId) {
+          try {
+            const docRef = doc(db, "knowledgeItems", editId);
+            const docSnap = await getDoc(docRef);
+            
+            if (docSnap.exists()) {
+              const editItem = docSnap.data();
+              setFormData({
+                title: editItem.title || "",
+                subtitle: editItem.subtitle || "",
+                shortDescription: editItem.shortDescription || "",
+                status: editItem.status || "DRAFT",
+                visibility: editItem.visibility || "PUBLIC",
+                category: editItem.category || "",
+                link: editItem.link || "",
+              });
+            }
+          } catch (error) {
+            console.error("Error fetching document:", error);
+            toast.error("Failed to load existing data");
+          }
         }
       }
-    }
+    };
+    fetchEditData();
   }, []);
 
   const handleScanImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -80,49 +91,53 @@ export default function CreateKnowledgePage() {
     }
     
     setIsSaving(true);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 800));
     
-    // Save to localStorage for demo functionality
-    const newItem = {
-      id: "item-" + Date.now(),
-      slug: formData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-      title: formData.title,
-      subtitle: formData.subtitle,
-      shortDescription: formData.shortDescription,
-      category: formData.category || "Uncategorized",
-      status: formData.status,
-      visibility: formData.visibility,
-      views: 0,
-      date: new Date().toLocaleDateString(),
-      thumbnail: "/images/Default thumbnail placeholder (when admin doesn't upload one).png", 
-      contentImages: [],
-      featured: false,
-      popular: false
-    };
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const editId = urlParams.get("edit");
 
-    const existingData = JSON.parse(localStorage.getItem("library_items") || "[]");
-    const urlParams = new URLSearchParams(window.location.search);
-    const editId = urlParams.get("edit");
-
-    if (editId) {
-      // Update existing item
-      const updatedData = existingData.map((item: any) => {
-        if (item.id === editId) {
-          return { ...item, ...newItem, id: editId, slug: item.slug, date: item.date };
-        }
-        return item;
-      });
-      localStorage.setItem("library_items", JSON.stringify(updatedData));
-      toast.success("Knowledge item updated successfully");
-    } else {
-      // Create new item
-      localStorage.setItem("library_items", JSON.stringify([newItem, ...existingData]));
-      toast.success("Knowledge item created successfully");
+      if (editId) {
+        // Update existing item in Firebase
+        const docRef = doc(db, "knowledgeItems", editId);
+        await updateDoc(docRef, {
+          title: formData.title,
+          subtitle: formData.subtitle,
+          shortDescription: formData.shortDescription,
+          category: formData.category || "Uncategorized",
+          status: formData.status,
+          visibility: formData.visibility,
+          link: formData.link,
+        });
+        toast.success("Knowledge item updated successfully in Firebase");
+      } else {
+        // Create new item in Firebase
+        const newItemRef = doc(collection(db, "knowledgeItems"));
+        await setDoc(newItemRef, {
+          slug: formData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+          title: formData.title,
+          subtitle: formData.subtitle,
+          shortDescription: formData.shortDescription,
+          category: formData.category || "Uncategorized",
+          status: formData.status,
+          visibility: formData.visibility,
+          link: formData.link,
+          views: 0,
+          date: new Date().toISOString(), // store ISO string for consistency
+          thumbnail: "/images/Default thumbnail placeholder (when admin doesn't upload one).png", 
+          contentImages: [],
+          featured: false,
+          popular: false
+        });
+        toast.success("Knowledge item created successfully in Firebase");
+      }
+      
+      setIsSaving(false);
+      router.push("/admin/knowledge");
+    } catch (error) {
+      console.error("Error saving to Firebase:", error);
+      toast.error("Firebase is missing configuration or offline. Check console.");
+      setIsSaving(false);
     }
-
-    setIsSaving(false);
-    router.push("/admin/knowledge");
   };
 
   return (
@@ -200,11 +215,11 @@ export default function CreateKnowledgePage() {
                 
                 {/* OCR Scanner Feature */}
                 <Dialog>
-                  <DialogTrigger asChild>
-                    <Button variant="secondary" size="sm" className="gap-2 bg-brand-indigo/10 text-brand-indigo hover:bg-brand-indigo/20 shadow-sm border border-brand-indigo/20">
+                  <DialogTrigger render={
+                    <Button variant="secondary" size="sm" className="gap-2 bg-brand-indigo/10 text-brand-indigo hover:bg-brand-indigo/20 shadow-sm border border-brand-indigo/20" />
+                  }>
                       <ScanText className="h-4 w-4" />
                       OCR Scanner
-                    </Button>
                   </DialogTrigger>
                   <DialogContent className="sm:max-w-[500px]">
                     <DialogHeader>

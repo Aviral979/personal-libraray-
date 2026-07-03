@@ -4,6 +4,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { useState, useEffect } from "react";
 import { Search, ChevronRight, Sparkles } from "lucide-react";
+import { db } from "@/lib/firebase";
+import { collection, getDocs, query, where, orderBy } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { KnowledgeCard } from "@/components/shared/knowledge-card";
@@ -20,34 +22,34 @@ export default function HomePage() {
   const [items, setItems] = useState<any[]>([]);
 
   useEffect(() => {
-    const initialized = localStorage.getItem("demo_initialized");
-    if (!initialized) {
-      const demoItem = {
-        id: "fake-demo-1",
-        slug: "design-system-exploration",
-        title: "Design System UI Inspiration",
-        shortDescription: "Hover over this card to see a live slideshow of the uploaded UI components and design concepts inside this knowledge item.",
-        date: new Date().toLocaleDateString(),
-        category: "Demo",
-        featured: true,
-        thumbnail: "/images/Hero  landing page background.png",
-        contentImages: [
-          "/images/Hero  landing page background.png",
-          "/images/logo.png",
-          "/images/Default thumbnail placeholder (when admin doesn't upload one).png"
-        ]
-      };
-      localStorage.setItem("library_items", JSON.stringify([demoItem]));
-      localStorage.setItem("demo_initialized", "true");
-    }
-
-    const localData = JSON.parse(localStorage.getItem("library_items") || "[]");
-    const formattedData = localData.map((item: any) => ({
-      ...item,
-      publishedAt: new Date(item.date),
-      category: { name: item.category, slug: item.category.toLowerCase() }
-    }));
-    setItems(formattedData);
+    const fetchKnowledge = async () => {
+      try {
+        const q = query(collection(db, "knowledgeItems"), where("status", "==", "PUBLISHED"));
+        const querySnapshot = await getDocs(q);
+        const fetchedItems = querySnapshot.docs.map(doc => {
+          const data = doc.data();
+          let dateObj = new Date();
+          if (data.date) {
+            try { dateObj = new Date(data.date); } catch(e) {}
+          } else if (data.createdAt) {
+             dateObj = new Date(data.createdAt);
+          }
+          return {
+            id: doc.id,
+            ...data,
+            publishedAt: dateObj,
+            category: { 
+              name: data.category || "Uncategorized", 
+              slug: (data.category || "uncategorized").toLowerCase() 
+            }
+          };
+        });
+        setItems(fetchedItems);
+      } catch (error) {
+        console.error("Error fetching from Firebase:", error);
+      }
+    };
+    fetchKnowledge();
   }, []);
 
   const filteredItems = items.filter((item) => {

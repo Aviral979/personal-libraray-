@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PlusCircle, Search, MoreHorizontal, Pencil, Trash2, Eye } from "lucide-react";
+import { db } from "@/lib/firebase";
+import { collection, getDocs, deleteDoc, doc, query, orderBy } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -34,34 +36,41 @@ export default function KnowledgeAdminPage() {
   const [knowledgeItems, setKnowledgeItems] = useState<any[]>([]);
 
   useEffect(() => {
-    const initialized = localStorage.getItem("demo_initialized");
-    if (!initialized) {
-      const demoItem = {
-        id: "fake-demo-1",
-        slug: "design-system-exploration",
-        title: "Design System UI Inspiration",
-        category: "Demo",
-        status: "PUBLISHED",
-        views: 128,
-        date: new Date().toLocaleDateString()
-      };
-      localStorage.setItem("library_items", JSON.stringify([demoItem]));
-      localStorage.setItem("demo_initialized", "true");
-    }
-
-    const localData = JSON.parse(localStorage.getItem("library_items") || "[]");
-    setKnowledgeItems(localData);
+    const fetchKnowledge = async () => {
+      try {
+        const q = query(collection(db, "knowledgeItems"));
+        const querySnapshot = await getDocs(q);
+        const fetchedItems = querySnapshot.docs.map(doc => {
+          const data = doc.data();
+          let dateStr = new Date().toLocaleDateString();
+          if (data.date) {
+            try {
+              dateStr = new Date(data.date).toLocaleDateString();
+            } catch (e) {}
+          }
+          return {
+            id: doc.id,
+            ...data,
+            date: dateStr
+          };
+        });
+        setKnowledgeItems(fetchedItems);
+      } catch (error) {
+        console.error("Error fetching from Firebase:", error);
+      }
+    };
+    fetchKnowledge();
   }, []);
 
-  const handleDelete = (id: string) => {
-    setKnowledgeItems(prev => prev.filter(item => item.id !== id));
-    
-    // Also remove from localStorage
-    const localData = JSON.parse(localStorage.getItem("library_items") || "[]");
-    const updatedLocal = localData.filter((item: any) => item.id !== id);
-    localStorage.setItem("library_items", JSON.stringify(updatedLocal));
-
-    toast.success("Knowledge item moved to trash");
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, "knowledgeItems", id));
+      setKnowledgeItems(prev => prev.filter(item => item.id !== id));
+      toast.success("Knowledge item moved to trash (deleted from Firebase)");
+    } catch (error) {
+      console.error("Error deleting from Firebase:", error);
+      toast.error("Failed to delete item from Firebase");
+    }
   };
 
   const filteredItems = knowledgeItems.filter(item => {
