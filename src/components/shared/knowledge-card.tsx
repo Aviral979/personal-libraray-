@@ -2,12 +2,10 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { formatDistanceToNow } from "date-fns";
-import { Calendar, Tag, Folder } from "lucide-react";
+import { Calendar, Folder } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { motion, AnimatePresence } from "framer-motion";
 
 export interface KnowledgeCardProps {
   id: string;
@@ -30,13 +28,13 @@ export interface KnowledgeCardProps {
 }
 
 export function KnowledgeCard({
+  id,
   slug,
   title,
   shortDescription,
   thumbnail,
   publishedAt,
   category,
-  tags = [],
   featured,
   popular,
   contentImages = [],
@@ -49,9 +47,9 @@ export function KnowledgeCard({
     if (isHovered && contentImages.length > 0) {
       interval = setInterval(() => {
         setCurrentImageIndex((prev) => (prev + 1) % contentImages.length);
-      }, 1000); // change image every 1 second
+      }, 1200);
     } else {
-      setCurrentImageIndex(0); // reset when not hovered
+      setCurrentImageIndex(0);
     }
     return () => clearInterval(interval);
   }, [isHovered, contentImages.length]);
@@ -60,42 +58,37 @@ export function KnowledgeCard({
     ? contentImages[currentImageIndex] 
     : (thumbnail || "/images/Default thumbnail placeholder (when admin doesn't upload one).png");
 
+  // Use document ID for routing so detail page can always find it
+  const linkHref = `/knowledge/${id}`;
+
   return (
-    <Link href={`/knowledge/${slug}`} className="h-full block">
-      <Card className="group h-full flex flex-col overflow-hidden border-border/40 bg-card hover:shadow-2xl hover:shadow-primary/10 hover:border-primary/30 transition-all duration-500 hover:-translate-y-1.5 cursor-pointer">
-        {/* Thumbnail Area */}
-        <div 
-          className="relative h-56 sm:h-64 w-full shrink-0 overflow-hidden bg-muted"
-          onMouseEnter={() => setIsHovered(true)}
-          onMouseLeave={() => setIsHovered(false)}
-        >
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={displayImage}
-              initial={{ opacity: 0.5, filter: "blur(4px)" }}
-              animate={{ opacity: 1, filter: "blur(0px)" }}
-              exit={{ opacity: 0.5, filter: "blur(4px)" }}
-              transition={{ duration: 0.4 }}
-              className="absolute inset-0"
-            >
-              <Image
-                src={displayImage}
-                alt={title}
-                fill
-                className="object-cover transition-transform duration-700 group-hover:scale-110 ease-out"
-              />
-            </motion.div>
-          </AnimatePresence>
+    <Link href={linkHref} className="block h-full">
+      <Card 
+        className="group h-full flex flex-col overflow-hidden rounded-2xl border border-border/30 bg-card shadow-md hover:shadow-2xl hover:shadow-primary/10 hover:border-primary/30 transition-all duration-500 hover:-translate-y-2 cursor-pointer"
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
+        {/* Thumbnail */}
+        <div className="relative w-full aspect-[4/3] shrink-0 overflow-hidden bg-muted">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={displayImage}
+            alt={title}
+            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 ease-out"
+          />
+
+          {/* Gradient overlay at bottom for text contrast */}
+          <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/50 to-transparent" />
 
           {/* Badges */}
           <div className="absolute top-3 left-3 flex flex-wrap gap-2">
             {featured && (
-              <Badge variant="default" className="bg-brand-indigo hover:bg-brand-indigo/90 shadow-sm">
+              <Badge variant="default" className="bg-brand-indigo hover:bg-brand-indigo/90 shadow-md text-xs">
                 Featured
               </Badge>
             )}
             {popular && (
-              <Badge variant="default" className="bg-brand-warning text-brand-warning-foreground hover:bg-brand-warning/90 shadow-sm">
+              <Badge variant="default" className="bg-brand-warning text-brand-warning-foreground hover:bg-brand-warning/90 shadow-md text-xs">
                 Popular
               </Badge>
             )}
@@ -104,7 +97,7 @@ export function KnowledgeCard({
           {/* Category Badge - Bottom Right */}
           {category && (
             <div className="absolute bottom-3 right-3">
-              <Badge variant="secondary" className="bg-background/80 backdrop-blur-md shadow-sm gap-1 text-xs">
+              <Badge variant="secondary" className="bg-background/80 backdrop-blur-md shadow-sm gap-1 text-xs font-medium">
                 <Folder className="h-3 w-3" />
                 {category.name}
               </Badge>
@@ -112,41 +105,27 @@ export function KnowledgeCard({
           )}
         </div>
 
-        <CardContent className="p-6 flex flex-col flex-1">
-          {/* Meta Info */}
-          <div className="flex items-center gap-3 text-xs text-muted-foreground mb-3">
-            {publishedAt && (
-              <div className="flex items-center gap-1">
-                <Calendar className="h-3 w-3" />
-                <span>{formatDistanceToNow(new Date(publishedAt), { addSuffix: true })}</span>
-              </div>
-            )}
-          </div>
+        {/* Content */}
+        <CardContent className="p-5 sm:p-6 flex flex-col flex-1">
+          {/* Date */}
+          {publishedAt && (
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-3">
+              <Calendar className="h-3.5 w-3.5" />
+              <span>{formatDistanceToNow(new Date(publishedAt), { addSuffix: true })}</span>
+            </div>
+          )}
 
           {/* Title */}
-          <h3 className="font-heading font-bold text-xl leading-tight line-clamp-2 mb-3 group-hover:text-primary transition-colors">
+          <h3 className="font-heading font-bold text-lg sm:text-xl leading-snug line-clamp-2 mb-2 group-hover:text-primary transition-colors duration-300">
             {title}
           </h3>
 
           {/* Description */}
           {shortDescription && (
-            <p className="text-[15px] text-muted-foreground leading-relaxed line-clamp-2 mb-5 flex-1">
+            <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2 flex-1">
               {shortDescription}
             </p>
           )}
-
-          {/* Tags Footer */}
-          <div className="mt-auto pt-4 border-t border-border/50 flex flex-wrap gap-2">
-            {tags.slice(0, 3).map((tag) => (
-              <span key={tag.slug} className="flex items-center gap-1 text-xs text-muted-foreground">
-                <Tag className="h-3 w-3" />
-                {tag.name}
-              </span>
-            ))}
-            {tags.length > 3 && (
-              <span className="text-xs text-muted-foreground">+{tags.length - 3}</span>
-            )}
-          </div>
         </CardContent>
       </Card>
     </Link>

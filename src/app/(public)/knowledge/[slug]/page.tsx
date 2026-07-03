@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { ArrowLeft, Calendar, Folder, FileText, Download, PlayCircle, ExternalLink, Loader2 } from "lucide-react";
@@ -9,7 +8,6 @@ import { collection, query, where, getDocs, doc, getDoc } from "firebase/firesto
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 
 // This is the detail page for displaying knowledge items
 export default function KnowledgeDetailPage({ params }: { params: { slug: string } }) {
@@ -19,20 +17,39 @@ export default function KnowledgeDetailPage({ params }: { params: { slug: string
   useEffect(() => {
     const fetchItem = async () => {
       try {
-        // First try to fetch by Document ID
-        const docRef = doc(db, "knowledgeItems", params.slug);
-        const docSnap = await getDoc(docRef);
-        
         let docData = null;
 
-        if (docSnap.exists()) {
-          docData = docSnap.data();
-        } else {
-          // Fallback to querying by slug field
+        // Try 1: Fetch by Document ID (primary method since cards link by ID)
+        try {
+          const docRef = doc(db, "knowledgeItems", params.slug);
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists()) {
+            docData = docSnap.data();
+          }
+        } catch {
+          // Invalid document ID format, skip
+        }
+        
+        // Try 2: Search by slug field
+        if (!docData) {
           const q = query(collection(db, "knowledgeItems"), where("slug", "==", params.slug));
           const querySnapshot = await getDocs(q);
           if (!querySnapshot.empty) {
             docData = querySnapshot.docs[0].data();
+          }
+        }
+
+        // Try 3: Search by title (decoded from URL)
+        if (!docData) {
+          const decodedSlug = decodeURIComponent(params.slug);
+          const allDocs = await getDocs(collection(db, "knowledgeItems"));
+          for (const d of allDocs.docs) {
+            const data = d.data();
+            const generatedSlug = data.title?.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+            if (generatedSlug === decodedSlug || d.id === decodedSlug) {
+              docData = data;
+              break;
+            }
           }
         }
         
@@ -85,6 +102,7 @@ export default function KnowledgeDetailPage({ params }: { params: { slug: string
     <div className="min-h-screen bg-background pb-20">
       {/* ─── FULL WIDTH HERO THUMBNAIL ────────────────────────────────────────────── */}
       <div className="relative w-full h-[40vh] min-h-[300px] max-h-[500px]">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={content.thumbnail}
           alt={content.title}
@@ -147,9 +165,11 @@ export default function KnowledgeDetailPage({ params }: { params: { slug: string
         </div>
 
         {/* ─── DESCRIPTION SECTION ───────────────────────────────────────────────── */}
-        <div className="prose prose-neutral dark:prose-invert max-w-none mb-12 px-2">
-          <p className="text-lg leading-relaxed text-foreground/90">{content.shortDescription}</p>
-        </div>
+        {content.shortDescription && (
+          <div className="prose prose-neutral dark:prose-invert max-w-none mb-12 px-2">
+            <p className="text-lg leading-relaxed text-foreground/90">{content.shortDescription}</p>
+          </div>
+        )}
 
         {/* ─── RELATED MEDIA (PHOTOS & VIDEOS) ─────────────────────────────────── */}
         <div className="space-y-12">
@@ -162,20 +182,16 @@ export default function KnowledgeDetailPage({ params }: { params: { slug: string
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {content.images.map((img: string, idx: number) => (
-                  <Dialog key={idx}>
-                    <DialogTrigger render={
-                      <div className="relative aspect-video rounded-xl overflow-hidden border border-border/50 shadow-sm group cursor-pointer" />
-                    }>
-                        <img
-                          src={img}
-                          alt={`Related image ${idx + 1}`}
-                          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                        />
-                    </DialogTrigger>
-                    <DialogContent className="max-w-[90vw] max-h-[90vh] p-0 overflow-hidden bg-black/90 border-none">
-                      <img src={img} alt={`Fullscreen ${idx}`} className="w-full h-full object-contain" />
-                    </DialogContent>
-                  </Dialog>
+                  <a key={idx} href={img} target="_blank" rel="noopener noreferrer" className="block">
+                    <div className="relative aspect-video rounded-xl overflow-hidden border border-border/50 shadow-sm group cursor-pointer">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={img}
+                        alt={`Related image ${idx + 1}`}
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                      />
+                    </div>
+                  </a>
                 ))}
               </div>
             </section>
@@ -187,28 +203,23 @@ export default function KnowledgeDetailPage({ params }: { params: { slug: string
               <h2 className="font-heading text-2xl font-semibold mb-6 flex items-center gap-2">
                 Video Recordings
               </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4">
                 {content.videos.map((vid: any) => (
-                  <Dialog key={vid.id}>
-                    <DialogTrigger render={
-                      <div className="relative aspect-video rounded-xl overflow-hidden border border-border/50 shadow-sm bg-muted flex items-center justify-center group cursor-pointer hover:border-primary/50 transition-colors" />
-                    }>
-                        <PlayCircle className="h-16 w-16 text-muted-foreground/50 group-hover:text-primary transition-colors" />
-                        <div className="absolute bottom-3 left-3 right-3 flex justify-between items-center text-sm font-medium bg-background/80 backdrop-blur-md px-3 py-1.5 rounded-md">
-                          <span className="truncate pr-2">{vid.title}</span>
-                          <Badge variant="secondary" className="shrink-0">{vid.duration}</Badge>
-                        </div>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-[90vw] p-0 overflow-hidden bg-black/90 border-none">
-                      <video src={vid.url} controls autoPlay className="w-full max-h-[85vh] outline-none" />
-                    </DialogContent>
-                  </Dialog>
+                  <div key={vid.id} className="rounded-xl overflow-hidden border border-border/50 shadow-sm bg-black">
+                    <video src={vid.url} controls className="w-full max-h-[60vh] outline-none" />
+                    <div className="p-3 bg-card flex justify-between items-center">
+                      <span className="font-medium text-sm truncate pr-2">{vid.title}</span>
+                      <Badge variant="secondary" className="shrink-0">{vid.duration}</Badge>
+                    </div>
+                  </div>
                 ))}
               </div>
             </section>
           )}
 
-          <Separator className="my-8" />
+          {(content.images.length > 0 || content.videos.length > 0 || content.files.length > 0) && (
+            <Separator className="my-8" />
+          )}
 
           {/* ─── ATTACHED FILES ───────────────────────────────────────────────────── */}
           {content.files.length > 0 && (
@@ -216,24 +227,26 @@ export default function KnowledgeDetailPage({ params }: { params: { slug: string
               <h2 className="font-heading text-2xl font-semibold mb-6">Attached Files & Documents</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {content.files.map((file: any) => (
-                  <div key={file.id} className="flex items-center justify-between p-4 rounded-xl border border-border bg-card hover:shadow-md transition-shadow">
-                    <div className="flex items-center gap-4">
-                      <div className="h-10 w-10 rounded-lg bg-brand-warning/10 flex items-center justify-center text-brand-warning">
-                        <FileText className="h-5 w-5" />
+                  <a key={file.id} href={file.url} target="_blank" rel="noopener noreferrer" className="block">
+                    <div className="flex items-center justify-between p-4 rounded-xl border border-border bg-card hover:shadow-md transition-shadow">
+                      <div className="flex items-center gap-4">
+                        <div className="h-10 w-10 rounded-lg bg-brand-warning/10 flex items-center justify-center text-brand-warning">
+                          <FileText className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <p className="font-medium truncate max-w-[200px] sm:max-w-[250px]" title={file.name}>
+                            {file.name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {file.type} • {file.size}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-medium truncate max-w-[200px] sm:max-w-[250px]" title={file.name}>
-                          {file.name}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {file.type} • {file.size}
-                        </p>
-                      </div>
+                      <Button variant="ghost" size="icon" className="shrink-0 text-muted-foreground hover:text-foreground hover:bg-muted">
+                        <Download className="h-4 w-4" />
+                      </Button>
                     </div>
-                    <Button variant="ghost" size="icon" className="shrink-0 text-muted-foreground hover:text-foreground hover:bg-muted">
-                      <Download className="h-4 w-4" />
-                    </Button>
-                  </div>
+                  </a>
                 ))}
               </div>
             </section>
