@@ -1,0 +1,444 @@
+// Personal Knowledge Archive — Database Schema
+// PostgreSQL + Prisma ORM
+// All deletions are soft-delete by default
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── AUTH & USERS ────────────────────────────────────────────────────────────
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  EDITOR
+  VIEWER
+}
+
+model User {
+  id             String    @id @default(cuid())
+  name           String?
+  email          String    @unique
+  emailVerified  DateTime?
+  hashedPassword String?
+  image          String?
+  role           UserRole  @default(VIEWER)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  accounts      Account[]
+  sessions      Session[]
+  activityLogs  ActivityLog[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ─── KNOWLEDGE ITEMS ─────────────────────────────────────────────────────────
+
+enum KnowledgeStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum KnowledgeVisibility {
+  PUBLIC
+  PRIVATE
+  UNLISTED
+}
+
+model KnowledgeItem {
+  id               String              @id @default(cuid())
+  uuid             String              @unique @default(uuid())
+  title            String
+  slug             String              @unique
+  thumbnail        String?
+  shortDescription String?             @db.Text
+  status           KnowledgeStatus     @default(DRAFT)
+  visibility       KnowledgeVisibility @default(PUBLIC)
+  featured         Boolean             @default(false)
+  popular          Boolean             @default(false)
+  viewCount        Int                 @default(0)
+  seoTitle         String?
+  seoDescription   String?             @db.Text
+  publishedAt      DateTime?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  deletedAt        DateTime?           // soft-delete
+
+  categoryId    String?
+  subCategoryId String?
+
+  category    Category? @relation("ItemCategory", fields: [categoryId], references: [id], onDelete: SetNull)
+  subCategory Category? @relation("ItemSubCategory", fields: [subCategoryId], references: [id], onDelete: SetNull)
+
+  blocks          KnowledgeBlock[]
+  tags            KnowledgeTag[]
+  collectionItems CollectionItem[]
+  ocrRecords      OcrRecord[]
+  externalLinks   ExternalLink[]
+  fileAssets      FileAsset[]
+
+  // Full-text search vector
+  searchVector Unsupported("tsvector")?
+
+  @@index([status, visibility])
+  @@index([categoryId])
+  @@index([featured])
+  @@index([popular])
+  @@index([publishedAt])
+  @@index([deletedAt])
+  @@map("knowledge_items")
+}
+
+// ─── KNOWLEDGE BLOCKS (Tiptap Content) ───────────────────────────────────────
+
+enum BlockType {
+  HEADING
+  PARAGRAPH
+  IMAGE
+  GALLERY
+  VIDEO
+  EXTERNAL_LINK
+  BUTTON
+  DIVIDER
+  QUOTE
+  CHECKLIST
+  TABLE
+  CODE
+  MARKDOWN
+  CALLOUT
+  PDF
+  FILE_DOWNLOAD
+  OCR_BLOCK
+}
+
+model KnowledgeBlock {
+  id          String    @id @default(cuid())
+  knowledgeId String
+  type        BlockType
+  order       Int
+  content     Json      // Block content stored as JSON
+  metadata    Json?     // Extra metadata (styles, settings)
+  isHidden    Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  knowledge KnowledgeItem @relation(fields: [knowledgeId], references: [id], onDelete: Cascade)
+
+  @@index([knowledgeId, order])
+  @@map("knowledge_blocks")
+}
+
+// ─── CATEGORIES ──────────────────────────────────────────────────────────────
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  description String?   @db.Text
+  thumbnail   String?
+  icon        String?   // Lucide icon name
+  order       Int       @default(0)
+  seoTitle    String?
+  seoDescription String? @db.Text
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime? // soft-delete
+
+  parentId String?
+  parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children Category[] @relation("CategoryTree")
+
+  knowledgeItems    KnowledgeItem[] @relation("ItemCategory")
+  subKnowledgeItems KnowledgeItem[] @relation("ItemSubCategory")
+
+  @@index([parentId])
+  @@index([order])
+  @@map("categories")
+}
+
+// ─── TAGS ────────────────────────────────────────────────────────────────────
+
+model Tag {
+  id         String   @id @default(cuid())
+  name       String   @unique
+  slug       String   @unique
+  usageCount Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  knowledgeItems KnowledgeTag[]
+
+  @@map("tags")
+}
+
+model KnowledgeTag {
+  knowledgeId String
+  tagId       String
+
+  knowledge KnowledgeItem @relation(fields: [knowledgeId], references: [id], onDelete: Cascade)
+  tag       Tag           @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([knowledgeId, tagId])
+  @@map("knowledge_tags")
+}
+
+// ─── COLLECTIONS ─────────────────────────────────────────────────────────────
+
+model Collection {
+  id          String    @id @default(cuid())
+  title       String
+  slug        String    @unique
+  description String?   @db.Text
+  thumbnail   String?
+  order       Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime? // soft-delete
+
+  items CollectionItem[]
+
+  @@map("collections")
+}
+
+model CollectionItem {
+  collectionId String
+  knowledgeId  String
+  order        Int    @default(0)
+
+  collection Collection    @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  knowledge  KnowledgeItem @relation(fields: [knowledgeId], references: [id], onDelete: Cascade)
+
+  @@id([collectionId, knowledgeId])
+  @@map("collection_items")
+}
+
+// ─── MEDIA LIBRARY ───────────────────────────────────────────────────────────
+
+enum MediaType {
+  IMAGE
+  VIDEO
+  DOCUMENT
+  AUDIO
+  OTHER
+}
+
+model Media {
+  id        String    @id @default(cuid())
+  type      MediaType
+  url       String
+  fileName  String
+  size      Int       // bytes
+  width     Int?
+  height    Int?
+  mimeType  String
+  alt       String?
+  usedCount Int       @default(0)
+  createdAt DateTime  @default(now())
+  deletedAt DateTime? // soft-delete
+
+  ocrRecords OcrRecord[]
+
+  @@index([type])
+  @@map("media")
+}
+
+// ─── OCR RECORDS ─────────────────────────────────────────────────────────────
+
+model OcrRecord {
+  id            String   @id @default(cuid())
+  knowledgeId   String?
+  mediaId       String
+  coordinates   Json     // { x, y, width, height } of the selected region
+  rawText       String   @db.Text
+  correctedText String?  @db.Text
+  language      String   @default("eng")
+  confidence    Float?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  knowledge KnowledgeItem? @relation(fields: [knowledgeId], references: [id], onDelete: SetNull)
+  media     Media          @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+
+  @@index([knowledgeId])
+  @@index([mediaId])
+  @@map("ocr_records")
+}
+
+// ─── EXTERNAL LINKS ──────────────────────────────────────────────────────────
+
+model ExternalLink {
+  id           String  @id @default(cuid())
+  knowledgeId  String
+  title        String
+  url          String
+  icon         String? // Lucide icon name or favicon URL
+  description  String?
+  openInNewTab Boolean @default(true)
+  order        Int     @default(0)
+
+  knowledge KnowledgeItem @relation(fields: [knowledgeId], references: [id], onDelete: Cascade)
+
+  @@index([knowledgeId])
+  @@map("external_links")
+}
+
+// ─── FILE ASSETS ─────────────────────────────────────────────────────────────
+
+model FileAsset {
+  id          String @id @default(cuid())
+  knowledgeId String
+  type        String // "pdf", "zip", "doc", etc.
+  url         String
+  size        Int
+  name        String
+  createdAt   DateTime @default(now())
+
+  knowledge KnowledgeItem @relation(fields: [knowledgeId], references: [id], onDelete: Cascade)
+
+  @@index([knowledgeId])
+  @@map("file_assets")
+}
+
+// ─── SETTINGS ────────────────────────────────────────────────────────────────
+
+model Settings {
+  id    String @id @default(cuid())
+  key   String @unique
+  value Json
+  group String @default("general")
+
+  @@map("settings")
+}
+
+// ─── SEO CONFIG ──────────────────────────────────────────────────────────────
+
+model SeoConfig {
+  id              String  @id @default(cuid())
+  pagePath        String  @unique // e.g., "/", "/about", "/categories"
+  title           String?
+  description     String? @db.Text
+  ogImage         String?
+  keywords        String?
+  canonicalUrl    String?
+  noIndex         Boolean @default(false)
+  structuredData  Json?
+
+  @@map("seo_configs")
+}
+
+// ─── ACTIVITY LOG ────────────────────────────────────────────────────────────
+
+enum ActivityAction {
+  CREATE
+  UPDATE
+  DELETE
+  RESTORE
+  PUBLISH
+  UNPUBLISH
+  LOGIN
+  LOGOUT
+  UPLOAD
+  OCR
+  BACKUP
+}
+
+model ActivityLog {
+  id          String         @id @default(cuid())
+  userId      String?
+  action      ActivityAction
+  entityType  String         // "KnowledgeItem", "Category", "Media", etc.
+  entityId    String?
+  description String?
+  metadata    Json?
+  createdAt   DateTime       @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([entityType])
+  @@map("activity_logs")
+}
+
+// ─── BACKUP ──────────────────────────────────────────────────────────────────
+
+enum BackupStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+}
+
+model Backup {
+  id        String       @id @default(cuid())
+  fileName  String
+  size      Int?
+  status    BackupStatus @default(PENDING)
+  url       String?
+  error     String?
+  createdAt DateTime     @default(now())
+
+  @@map("backups")
+}
+
+// ─── PAGES (Editable Content Pages) ──────────────────────────────────────────
+
+model Page {
+  id          String    @id @default(cuid())
+  title       String
+  slug        String    @unique
+  content     Json      // Block-based content like knowledge items
+  published   Boolean   @default(false)
+  seoTitle    String?
+  seoDescription String? @db.Text
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("pages")
+}
