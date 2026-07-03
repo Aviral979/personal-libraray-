@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Save, Loader2, Image as ImageIcon, Link as LinkIcon, FileText, Video, Upload, ScanText, Copy } from "lucide-react";
+import { ArrowLeft, Save, Loader2, Image as ImageIcon, Link as LinkIcon, FileText, Video, Upload, ScanText, Copy, Trash2 } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, doc, setDoc, updateDoc, getDoc } from "firebase/firestore";
 import Link from "next/link";
@@ -350,6 +350,83 @@ export default function CreateKnowledgePage() {
                     )}
                   </div>
                 </div>
+              </div>
+
+              {/* Media Preview Gallery */}
+              <div className="space-y-4 pt-2">
+                {(formData.contentImages.length > 0 || formData.videos.length > 0 || formData.files.length > 0) && (
+                  <div className="space-y-4">
+                    <h3 className="font-heading text-sm font-bold border-b border-border/50 pb-2">Media Preview</h3>
+                    
+                    {/* Images Preview */}
+                    {formData.contentImages.length > 0 && (
+                      <div className="space-y-2">
+                        <Label className="text-xs text-muted-foreground">Images ({formData.contentImages.length})</Label>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                          {formData.contentImages.map((url, i) => (
+                            <div key={i} className="relative group aspect-square rounded-lg border border-border/50 overflow-hidden bg-muted">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={url} alt={`Preview ${i}`} className="w-full h-full object-cover" onError={(e) => { e.currentTarget.src = "/images/Default thumbnail placeholder (when admin doesn't upload one).png" }} />
+                              <div className="absolute inset-0 bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <Button size="icon" variant="destructive" className="h-8 w-8 cursor-pointer shadow-md" onClick={() => {
+                                  const newImages = [...formData.contentImages];
+                                  newImages.splice(i, 1);
+                                  setFormData({ ...formData, contentImages: newImages });
+                                }}>
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Videos Preview */}
+                    {formData.videos.length > 0 && (
+                      <div className="space-y-2">
+                        <Label className="text-xs text-muted-foreground">Videos ({formData.videos.length})</Label>
+                        <div className="flex flex-col gap-2">
+                          {formData.videos.map((vid) => (
+                            <div key={vid.id} className="flex items-center justify-between p-3 rounded-md border border-border/50 bg-muted/30">
+                              <div className="flex items-center gap-3 truncate">
+                                <Video className="h-4 w-4 text-brand-success shrink-0" />
+                                <span className="text-sm truncate">{vid.url}</span>
+                              </div>
+                              <Button size="icon" variant="ghost" className="h-8 w-8 cursor-pointer text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => {
+                                setFormData({ ...formData, videos: formData.videos.filter(v => v.id !== vid.id) });
+                              }}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Files Preview */}
+                    {formData.files.length > 0 && (
+                      <div className="space-y-2">
+                        <Label className="text-xs text-muted-foreground">Files ({formData.files.length})</Label>
+                        <div className="flex flex-col gap-2">
+                          {formData.files.map((file) => (
+                            <div key={file.id} className="flex items-center justify-between p-3 rounded-md border border-border/50 bg-muted/30">
+                              <div className="flex items-center gap-3 truncate">
+                                <FileText className="h-4 w-4 text-brand-warning shrink-0" />
+                                <span className="text-sm truncate">{file.url}</span>
+                              </div>
+                              <Button size="icon" variant="ghost" className="h-8 w-8 cursor-pointer text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => {
+                                setFormData({ ...formData, files: formData.files.filter(f => f.id !== file.id) });
+                              }}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

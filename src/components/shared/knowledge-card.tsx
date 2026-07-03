@@ -61,11 +61,11 @@ export function KnowledgeCard({
     : (thumbnail || "/images/Default thumbnail placeholder (when admin doesn't upload one).png");
 
   return (
-    <Link href={`/knowledge/${slug}`}>
-      <Card className="group h-full overflow-hidden border-border/40 bg-card hover:shadow-2xl hover:shadow-primary/10 hover:border-primary/30 transition-all duration-500 hover:-translate-y-1.5 cursor-pointer">
+    <Link href={`/knowledge/${slug}`} className="h-full block">
+      <Card className="group h-full flex flex-col overflow-hidden border-border/40 bg-card hover:shadow-2xl hover:shadow-primary/10 hover:border-primary/30 transition-all duration-500 hover:-translate-y-1.5 cursor-pointer">
         {/* Thumbnail Area */}
         <div 
-          className="relative aspect-video w-full overflow-hidden bg-muted"
+          className="relative aspect-video w-full shrink-0 overflow-hidden bg-muted"
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >
