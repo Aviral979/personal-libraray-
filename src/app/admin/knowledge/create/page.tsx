@@ -37,6 +37,7 @@ export default function CreateKnowledgePage() {
     visibility: "PUBLIC",
     category: "",
     link: "",
+    thumbnailUrl: "",
     contentImages: [] as string[],
     videos: [] as { id: string; title: string; url: string; duration: string }[],
     files: [] as { id: string; name: string; url: string; size: string; type: string }[]
@@ -66,6 +67,7 @@ export default function CreateKnowledgePage() {
                 visibility: editItem.visibility || "PUBLIC",
                 category: editItem.category || "",
                 link: editItem.link || "",
+                thumbnailUrl: editItem.thumbnail || "",
                 contentImages: editItem.contentImages || [],
                 videos: editItem.videos || [],
                 files: editItem.files || [],
@@ -115,6 +117,7 @@ export default function CreateKnowledgePage() {
           status: formData.status,
           visibility: formData.visibility,
           link: formData.link,
+          thumbnail: formData.thumbnailUrl || (formData.contentImages.length > 0 ? formData.contentImages[0] : ""),
           contentImages: formData.contentImages,
           videos: formData.videos,
           files: formData.files,
@@ -134,7 +137,7 @@ export default function CreateKnowledgePage() {
           link: formData.link,
           views: 0,
           date: new Date().toISOString(), // store ISO string for consistency
-          thumbnail: formData.contentImages.length > 0 ? formData.contentImages[0] : "/images/Default thumbnail placeholder (when admin doesn't upload one).png", 
+          thumbnail: formData.thumbnailUrl || (formData.contentImages.length > 0 ? formData.contentImages[0] : "/images/Default thumbnail placeholder (when admin doesn't upload one).png"), 
           contentImages: formData.contentImages,
           videos: formData.videos,
           files: formData.files,
@@ -491,17 +494,37 @@ export default function CreateKnowledgePage() {
             <CardContent className="p-6 space-y-4">
               <h3 className="font-heading font-semibold text-lg">Thumbnail</h3>
               <Separator />
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="aspect-video rounded-lg border-2 border-dashed border-border/50 flex flex-col items-center justify-center bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors relative">
-                  <input type="file" accept="image/*" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                  <Upload className="h-6 w-6 text-muted-foreground mb-2" />
-                  <span className="text-xs font-medium">Direct Upload</span>
+              
+              {/* Thumbnail Preview */}
+              {formData.thumbnailUrl && (
+                <div className="relative aspect-video rounded-lg overflow-hidden border border-border/50 bg-muted">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img 
+                    src={formData.thumbnailUrl} 
+                    alt="Thumbnail preview" 
+                    className="w-full h-full object-cover" 
+                    onError={(e) => { e.currentTarget.src = '/images/Default thumbnail placeholder (when admin doesn\'t upload one).png' }}
+                  />
+                  <Button 
+                    size="icon" 
+                    variant="destructive" 
+                    className="absolute top-2 right-2 h-7 w-7 cursor-pointer shadow-md" 
+                    onClick={() => setFormData({ ...formData, thumbnailUrl: '' })}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
                 </div>
-                <div className="flex flex-col justify-center gap-2 border border-border/50 rounded-lg p-3 bg-muted/10">
-                  <span className="text-xs font-medium flex items-center gap-1"><LinkIcon className="h-3 w-3" /> Or by Link</span>
-                  <Input placeholder="https://..." className="h-8 text-xs" />
-                  <Button variant="secondary" size="sm" className="h-8 text-xs">Set Thumbnail</Button>
-                </div>
+              )}
+
+              {/* Thumbnail URL Input */}
+              <div className="flex flex-col gap-2">
+                <span className="text-xs font-medium flex items-center gap-1"><LinkIcon className="h-3 w-3" /> Paste Image URL</span>
+                <Input 
+                  placeholder="https://example.com/thumbnail.jpg" 
+                  className="h-9 text-sm" 
+                  value={formData.thumbnailUrl}
+                  onChange={(e) => setFormData({ ...formData, thumbnailUrl: e.target.value })}
+                />
               </div>
             </CardContent>
           </Card>

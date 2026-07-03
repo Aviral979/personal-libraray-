@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, use } from "react";
 import { ArrowLeft, Calendar, Folder, FileText, Download, PlayCircle, ExternalLink, Loader2 } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
@@ -10,7 +10,11 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 
 // This is the detail page for displaying knowledge items
-export default function KnowledgeDetailPage({ params }: { params: { slug: string } }) {
+export default function KnowledgeDetailPage({ params }: { params: Promise<{ slug: string }> }) {
+  // Next.js 16: params is a Promise, unwrap it with React.use()
+  const resolvedParams = use(params);
+  const slug = resolvedParams.slug;
+
   const [content, setContent] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -19,9 +23,9 @@ export default function KnowledgeDetailPage({ params }: { params: { slug: string
       try {
         let docData = null;
 
-        // Try 1: Fetch by Document ID (primary method since cards link by ID)
+        // Try 1: Fetch by Document ID (cards link by Firebase doc ID)
         try {
-          const docRef = doc(db, "knowledgeItems", params.slug);
+          const docRef = doc(db, "knowledgeItems", slug);
           const docSnap = await getDoc(docRef);
           if (docSnap.exists()) {
             docData = docSnap.data();
@@ -32,21 +36,20 @@ export default function KnowledgeDetailPage({ params }: { params: { slug: string
         
         // Try 2: Search by slug field
         if (!docData) {
-          const q = query(collection(db, "knowledgeItems"), where("slug", "==", params.slug));
+          const q = query(collection(db, "knowledgeItems"), where("slug", "==", slug));
           const querySnapshot = await getDocs(q);
           if (!querySnapshot.empty) {
             docData = querySnapshot.docs[0].data();
           }
         }
 
-        // Try 3: Search by title (decoded from URL)
+        // Try 3: Brute force - check all docs
         if (!docData) {
-          const decodedSlug = decodeURIComponent(params.slug);
           const allDocs = await getDocs(collection(db, "knowledgeItems"));
           for (const d of allDocs.docs) {
             const data = d.data();
             const generatedSlug = data.title?.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-            if (generatedSlug === decodedSlug || d.id === decodedSlug) {
+            if (generatedSlug === slug || d.id === slug) {
               docData = data;
               break;
             }
@@ -58,10 +61,10 @@ export default function KnowledgeDetailPage({ params }: { params: { slug: string
             title: docData.title,
             subtitle: docData.subtitle,
             shortDescription: docData.shortDescription,
-            publishedAt: docData.createdAt ? new Date(docData.createdAt).toLocaleDateString() : docData.date ? new Date(docData.date).toLocaleDateString() : new Date().toLocaleDateString(),
+            publishedAt: docData.date ? new Date(docData.date).toLocaleDateString() : new Date().toLocaleDateString(),
             category: docData.category || "Uncategorized",
             tags: docData.tags || [],
-            thumbnail: docData.thumbnail || "/images/Default thumbnail placeholder (when admin doesn't upload one).png",
+            thumbnail: docData.thumbnail || "",
             images: docData.contentImages || [],
             videos: docData.videos || [],
             files: docData.files || [],
@@ -76,7 +79,7 @@ export default function KnowledgeDetailPage({ params }: { params: { slug: string
     };
     
     fetchItem();
-  }, [params.slug]);
+  }, [slug]);
 
   if (loading) {
     return (
@@ -100,28 +103,26 @@ export default function KnowledgeDetailPage({ params }: { params: { slug: string
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      {/* ─── FULL WIDTH HERO THUMBNAIL ────────────────────────────────────────────── */}
-      <div className="relative w-full h-[40vh] min-h-[300px] max-h-[500px]">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={content.thumbnail}
-          alt={content.title}
-          className="object-cover w-full h-full"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
-        
-        {/* Back Button Floating */}
-        <div className="absolute top-6 left-6 z-10">
-          <Link href="/">
-            <Button variant="secondary" size="icon" className="rounded-full shadow-lg bg-background/80 backdrop-blur-md hover:bg-background">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-          </Link>
+      {/* ─── HERO THUMBNAIL ───────────────────────────────── */}
+      {content.thumbnail && (
+        <div className="relative w-full h-[40vh] min-h-[300px] max-h-[500px]">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={content.thumbnail} alt={content.title} className="object-cover w-full h-full" />
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
         </div>
+      )}
+
+      {/* Back Button */}
+      <div className={`${content.thumbnail ? 'absolute top-6 left-6 z-10' : 'max-w-4xl mx-auto px-4 pt-6'}`}>
+        <Link href="/">
+          <Button variant="secondary" size="icon" className="rounded-full shadow-lg bg-background/80 backdrop-blur-md hover:bg-background">
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+        </Link>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 -mt-20 relative z-10">
-        {/* ─── HEADER CONTENT ────────────────────────────────────────────────────── */}
+      <div className={`max-w-4xl mx-auto px-4 sm:px-6 ${content.thumbnail ? '-mt-20 relative z-10' : 'mt-4'}`}>
+        {/* ─── HEADER CONTENT ───────────────────────────────── */}
         <div className="bg-card rounded-2xl shadow-xl border border-border/50 p-8 mb-8 backdrop-blur-sm bg-card/95">
           <div className="flex flex-wrap items-center gap-3 mb-4">
             <Badge variant="default" className="bg-primary/20 text-primary hover:bg-primary/30 gap-1 border-none">
@@ -144,52 +145,48 @@ export default function KnowledgeDetailPage({ params }: { params: { slug: string
             </h2>
           )}
           
-          <div className="flex flex-wrap gap-2">
-            {content.tags.map((tag: string) => (
-              <Badge key={tag} variant="secondary" className="bg-muted text-muted-foreground">
-                {tag}
-              </Badge>
-            ))}
-          </div>
+          {content.tags.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {content.tags.map((tag: string) => (
+                <Badge key={tag} variant="secondary" className="bg-muted text-muted-foreground">
+                  {tag}
+                </Badge>
+              ))}
+            </div>
+          )}
 
           {content.externalLink && (
             <div className="mt-8 pt-6 border-t border-border/50">
-              <Link href={content.externalLink} target="_blank">
+              <a href={content.externalLink} target="_blank" rel="noopener noreferrer">
                 <Button className="gap-2 bg-brand-indigo hover:bg-brand-indigo/90 text-white shadow-sm">
                   <ExternalLink className="h-4 w-4" />
                   Visit External Reference
                 </Button>
-              </Link>
+              </a>
             </div>
           )}
         </div>
 
-        {/* ─── DESCRIPTION SECTION ───────────────────────────────────────────────── */}
+        {/* ─── DESCRIPTION ───────────────────────────────── */}
         {content.shortDescription && (
-          <div className="prose prose-neutral dark:prose-invert max-w-none mb-12 px-2">
+          <div className="mb-12 px-2">
             <p className="text-lg leading-relaxed text-foreground/90">{content.shortDescription}</p>
           </div>
         )}
 
-        {/* ─── RELATED MEDIA (PHOTOS & VIDEOS) ─────────────────────────────────── */}
+        {/* ─── MEDIA SECTIONS ───────────────────────────────── */}
         <div className="space-y-12">
           
-          {/* Images Section */}
+          {/* Images */}
           {content.images.length > 0 && (
             <section>
-              <h2 className="font-heading text-2xl font-semibold mb-6 flex items-center gap-2">
-                Images & Screenshots
-              </h2>
+              <h2 className="font-heading text-2xl font-semibold mb-6">Images & Screenshots</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {content.images.map((img: string, idx: number) => (
                   <a key={idx} href={img} target="_blank" rel="noopener noreferrer" className="block">
                     <div className="relative aspect-video rounded-xl overflow-hidden border border-border/50 shadow-sm group cursor-pointer">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={img}
-                        alt={`Related image ${idx + 1}`}
-                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                      />
+                      <img src={img} alt={`Image ${idx + 1}`} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                     </div>
                   </a>
                 ))}
@@ -197,12 +194,10 @@ export default function KnowledgeDetailPage({ params }: { params: { slug: string
             </section>
           )}
 
-          {/* Videos Section */}
+          {/* Videos */}
           {content.videos.length > 0 && (
             <section>
-              <h2 className="font-heading text-2xl font-semibold mb-6 flex items-center gap-2">
-                Video Recordings
-              </h2>
+              <h2 className="font-heading text-2xl font-semibold mb-6">Video Recordings</h2>
               <div className="grid grid-cols-1 gap-4">
                 {content.videos.map((vid: any) => (
                   <div key={vid.id} className="rounded-xl overflow-hidden border border-border/50 shadow-sm bg-black">
@@ -217,13 +212,10 @@ export default function KnowledgeDetailPage({ params }: { params: { slug: string
             </section>
           )}
 
-          {(content.images.length > 0 || content.videos.length > 0 || content.files.length > 0) && (
-            <Separator className="my-8" />
-          )}
-
-          {/* ─── ATTACHED FILES ───────────────────────────────────────────────────── */}
+          {/* Files */}
           {content.files.length > 0 && (
             <section>
+              <Separator className="mb-8" />
               <h2 className="font-heading text-2xl font-semibold mb-6">Attached Files & Documents</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {content.files.map((file: any) => (
@@ -234,24 +226,17 @@ export default function KnowledgeDetailPage({ params }: { params: { slug: string
                           <FileText className="h-5 w-5" />
                         </div>
                         <div>
-                          <p className="font-medium truncate max-w-[200px] sm:max-w-[250px]" title={file.name}>
-                            {file.name}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {file.type} • {file.size}
-                          </p>
+                          <p className="font-medium truncate max-w-[200px] sm:max-w-[250px]">{file.name}</p>
+                          <p className="text-xs text-muted-foreground">{file.type} • {file.size}</p>
                         </div>
                       </div>
-                      <Button variant="ghost" size="icon" className="shrink-0 text-muted-foreground hover:text-foreground hover:bg-muted">
-                        <Download className="h-4 w-4" />
-                      </Button>
+                      <Download className="h-4 w-4 text-muted-foreground shrink-0" />
                     </div>
                   </a>
                 ))}
               </div>
             </section>
           )}
-
         </div>
       </div>
     </div>
