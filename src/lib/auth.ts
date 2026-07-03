@@ -1,7 +1,8 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
-import type { UserRole } from "@prisma/client";
+
+export type UserRole = "SUPER_ADMIN" | "ADMIN" | "EDITOR" | "USER";
 
 declare module "next-auth" {
   interface Session {
