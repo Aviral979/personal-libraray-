@@ -65,7 +65,7 @@ export function KnowledgeCard({
       <Card className="group h-full flex flex-col overflow-hidden border-border/40 bg-card hover:shadow-2xl hover:shadow-primary/10 hover:border-primary/30 transition-all duration-500 hover:-translate-y-1.5 cursor-pointer">
         {/* Thumbnail Area */}
         <div 
-          className="relative aspect-video w-full shrink-0 overflow-hidden bg-muted"
+          className="relative h-56 sm:h-64 w-full shrink-0 overflow-hidden bg-muted"
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >
