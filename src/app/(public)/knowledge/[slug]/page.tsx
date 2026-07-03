@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { ArrowLeft, Calendar, Folder, FileText, Download, PlayCircle, ExternalLink, Loader2 } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -19,11 +19,24 @@ export default function KnowledgeDetailPage({ params }: { params: { slug: string
   useEffect(() => {
     const fetchItem = async () => {
       try {
-        const q = query(collection(db, "knowledgeItems"), where("slug", "==", params.slug));
-        const querySnapshot = await getDocs(q);
+        // First try to fetch by Document ID
+        const docRef = doc(db, "knowledgeItems", params.slug);
+        const docSnap = await getDoc(docRef);
         
-        if (!querySnapshot.empty) {
-          const docData = querySnapshot.docs[0].data();
+        let docData = null;
+
+        if (docSnap.exists()) {
+          docData = docSnap.data();
+        } else {
+          // Fallback to querying by slug field
+          const q = query(collection(db, "knowledgeItems"), where("slug", "==", params.slug));
+          const querySnapshot = await getDocs(q);
+          if (!querySnapshot.empty) {
+            docData = querySnapshot.docs[0].data();
+          }
+        }
+        
+        if (docData) {
           setContent({
             title: docData.title,
             subtitle: docData.subtitle,

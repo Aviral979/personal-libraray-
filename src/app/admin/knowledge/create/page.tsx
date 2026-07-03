@@ -37,7 +37,12 @@ export default function CreateKnowledgePage() {
     visibility: "PUBLIC",
     category: "",
     link: "",
+    contentImages: [] as string[],
+    videos: [] as { id: string; title: string; url: string; duration: string }[],
+    files: [] as { id: string; name: string; url: string; size: string; type: string }[]
   });
+
+  const [urlInput, setUrlInput] = useState("");
 
   // Load existing data if editing
   useEffect(() => {
@@ -61,6 +66,9 @@ export default function CreateKnowledgePage() {
                 visibility: editItem.visibility || "PUBLIC",
                 category: editItem.category || "",
                 link: editItem.link || "",
+                contentImages: editItem.contentImages || [],
+                videos: editItem.videos || [],
+                files: editItem.files || [],
               });
             }
           } catch (error) {
@@ -107,6 +115,9 @@ export default function CreateKnowledgePage() {
           status: formData.status,
           visibility: formData.visibility,
           link: formData.link,
+          contentImages: formData.contentImages,
+          videos: formData.videos,
+          files: formData.files,
         });
         toast.success("Knowledge item updated successfully in Firebase");
       } else {
@@ -123,8 +134,10 @@ export default function CreateKnowledgePage() {
           link: formData.link,
           views: 0,
           date: new Date().toISOString(), // store ISO string for consistency
-          thumbnail: "/images/Default thumbnail placeholder (when admin doesn't upload one).png", 
-          contentImages: [],
+          thumbnail: formData.contentImages.length > 0 ? formData.contentImages[0] : "/images/Default thumbnail placeholder (when admin doesn't upload one).png", 
+          contentImages: formData.contentImages,
+          videos: formData.videos,
+          files: formData.files,
           featured: false,
           popular: false
         });
@@ -303,8 +316,38 @@ export default function CreateKnowledgePage() {
                       </h3>
                       <p className="text-xs text-muted-foreground">Paste direct URLs (one per line) to upload multiple files.</p>
                     </div>
-                    <Textarea placeholder="https://example.com/image1.jpg&#10;https://example.com/video.mp4" className="min-h-[80px] text-sm resize-none" />
-                    <Button variant="secondary" size="sm" className="w-full">Add URLs to Media</Button>
+                    <Textarea 
+                      placeholder="https://example.com/image1.jpg&#10;https://example.com/video.mp4" 
+                      className="min-h-[80px] text-sm resize-none" 
+                      value={urlInput}
+                      onChange={(e) => setUrlInput(e.target.value)}
+                    />
+                    <Button 
+                      variant="secondary" 
+                      size="sm" 
+                      className="w-full"
+                      onClick={() => {
+                        const urls = urlInput.split('\n').map(u => u.trim()).filter(u => u);
+                        if (urls.length > 0) {
+                          const images = urls.filter(u => u.match(/\.(jpeg|jpg|gif|png|webp)$/i) || u.includes("image"));
+                          const videos = urls.filter(u => u.match(/\.(mp4|webm|ogg)$/i) || u.includes("video")).map((v, i) => ({ id: `vid-${Date.now()}-${i}`, title: `Video ${i+1}`, url: v, duration: "Unknown" }));
+                          const files = urls.filter(u => !images.includes(u) && !videos.find(vid => vid.url === u)).map((f, i) => ({ id: `file-${Date.now()}-${i}`, name: `Document ${i+1}`, url: f, size: "Unknown", type: "Link" }));
+                          
+                          setFormData({
+                            ...formData,
+                            contentImages: [...formData.contentImages, ...images],
+                            videos: [...formData.videos, ...videos],
+                            files: [...formData.files, ...files]
+                          });
+                          setUrlInput("");
+                          toast.success(`${urls.length} links added to media!`);
+                        }
+                      }}
+                    >Add URLs to Media</Button>
+                    
+                    {formData.contentImages.length > 0 && (
+                       <p className="text-xs text-brand-success">{formData.contentImages.length} images, {formData.videos.length} videos added.</p>
+                    )}
                   </div>
                 </div>
               </div>

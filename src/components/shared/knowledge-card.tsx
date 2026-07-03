@@ -112,7 +112,7 @@ export function KnowledgeCard({
           )}
         </div>
 
-        <CardContent className="p-5 flex flex-col h-[calc(100%-56.25%)]">
+        <CardContent className="p-5 flex flex-col flex-1">
           {/* Meta Info */}
           <div className="flex items-center gap-3 text-xs text-muted-foreground mb-3">
             {publishedAt && (
