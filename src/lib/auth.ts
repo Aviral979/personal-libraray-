@@ -1,6 +1,5 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import bcrypt from "bcryptjs";
 
 export type UserRole = "SUPER_ADMIN" | "ADMIN" | "EDITOR" | "USER";
 
@@ -42,9 +41,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
+        const id = credentials?.id as string | undefined;
+        const password = credentials?.password as string | undefined;
+        
         if (
-          credentials?.id === "bcp25398" &&
-          credentials?.password === "Aviral@2007"
+          id?.trim() === "bcp25398" &&
+          password?.trim() === "Aviral@2007"
         ) {
           return {
             id: "admin-1",
