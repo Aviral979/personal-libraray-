@@ -3,8 +3,9 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Save, Loader2, Image as ImageIcon, Link as LinkIcon, FileText, Video, Upload, ScanText, Copy, Trash2 } from "lucide-react";
-import { db } from "@/lib/firebase";
+import { db, storage } from "@/lib/firebase";
 import { collection, doc, setDoc, updateDoc, getDoc } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,8 +26,95 @@ import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle, Dialog
 export default function CreateKnowledgePage() {
   const router = useRouter();
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [ocrText, setOcrText] = useState("");
+
+  // Direct file upload to Firebase Storage
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setIsUploading(true);
+    const uploadedImages: string[] = [];
+    const uploadedVideos: { id: string; title: string; url: string; duration: string }[] = [];
+    const uploadedFiles: { id: string; name: string; url: string; size: string; type: string }[] = [];
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const timestamp = Date.now();
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const path = `uploads/${timestamp}_${safeName}`;
+
+      try {
+        const storageRef = ref(storage, path);
+        await uploadBytes(storageRef, file);
+        const downloadURL = await getDownloadURL(storageRef);
+
+        if (file.type.startsWith('image/')) {
+          uploadedImages.push(downloadURL);
+        } else if (file.type.startsWith('video/')) {
+          uploadedVideos.push({
+            id: `vid-${timestamp}-${i}`,
+            title: file.name,
+            url: downloadURL,
+            duration: 'Unknown'
+          });
+        } else {
+          const sizeStr = file.size < 1024 * 1024
+            ? `${(file.size / 1024).toFixed(1)} KB`
+            : `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
+          uploadedFiles.push({
+            id: `file-${timestamp}-${i}`,
+            name: file.name,
+            url: downloadURL,
+            size: sizeStr,
+            type: file.type || 'Unknown'
+          });
+        }
+      } catch (error) {
+        console.error(`Error uploading ${file.name}:`, error);
+        toast.error(`Failed to upload ${file.name}`);
+      }
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      contentImages: [...prev.contentImages, ...uploadedImages],
+      videos: [...prev.videos, ...uploadedVideos],
+      files: [...prev.files, ...uploadedFiles]
+    }));
+
+    const total = uploadedImages.length + uploadedVideos.length + uploadedFiles.length;
+    if (total > 0) {
+      toast.success(`${total} file(s) uploaded successfully!`);
+    }
+    setIsUploading(false);
+    // Reset the input so the same file can be selected again
+    e.target.value = '';
+  };
+
+  // Thumbnail direct upload
+  const handleThumbnailUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const timestamp = Date.now();
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const storageRef = ref(storage, `thumbnails/${timestamp}_${safeName}`);
+      await uploadBytes(storageRef, file);
+      const downloadURL = await getDownloadURL(storageRef);
+      setFormData(prev => ({ ...prev, thumbnailUrl: downloadURL }));
+      toast.success('Thumbnail uploaded!');
+    } catch (error) {
+      console.error('Thumbnail upload error:', error);
+      toast.error('Failed to upload thumbnail');
+    }
+    setIsUploading(false);
+    e.target.value = '';
+  };
   
   // Basic form state
   const [formData, setFormData] = useState({
@@ -295,20 +383,38 @@ export default function CreateKnowledgePage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Method 1: Direct Upload */}
                   <div className="border-dashed border-2 border-border/60 bg-muted/20 rounded-xl p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-muted/40 transition-colors relative h-full">
-                    <input type="file" multiple className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" title="Select multiple files" />
-                    <div className="flex items-center gap-3 mb-3">
-                      <ImageIcon className="h-5 w-5 text-brand-indigo" />
-                      <Video className="h-5 w-5 text-brand-success" />
-                      <FileText className="h-5 w-5 text-brand-warning" />
-                    </div>
-                    <h3 className="font-heading text-md font-bold mb-1">Direct Upload</h3>
-                    <p className="text-xs text-muted-foreground mb-4">
-                      Drag & Drop or Browse (Multiple allowed)
-                    </p>
-                    <Button variant="outline" size="sm" className="gap-2 pointer-events-none">
-                      <Upload className="h-3 w-3" />
-                      Browse
-                    </Button>
+                    <input 
+                      type="file" 
+                      multiple 
+                      accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar" 
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
+                      title="Select multiple files" 
+                      onChange={handleFileUpload}
+                      disabled={isUploading}
+                    />
+                    {isUploading ? (
+                      <>
+                        <Loader2 className="h-8 w-8 text-brand-indigo animate-spin mb-3" />
+                        <h3 className="font-heading text-md font-bold mb-1">Uploading...</h3>
+                        <p className="text-xs text-muted-foreground">Please wait while files are being uploaded to cloud</p>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex items-center gap-3 mb-3">
+                          <ImageIcon className="h-5 w-5 text-brand-indigo" />
+                          <Video className="h-5 w-5 text-brand-success" />
+                          <FileText className="h-5 w-5 text-brand-warning" />
+                        </div>
+                        <h3 className="font-heading text-md font-bold mb-1">Direct Upload</h3>
+                        <p className="text-xs text-muted-foreground mb-4">
+                          Drag & Drop or Browse (Multiple allowed)
+                        </p>
+                        <Button variant="outline" size="sm" className="gap-2 pointer-events-none">
+                          <Upload className="h-3 w-3" />
+                          Browse
+                        </Button>
+                      </>
+                    )}
                   </div>
 
                   {/* Method 2: By Link */}
@@ -516,7 +622,16 @@ export default function CreateKnowledgePage() {
                 </div>
               )}
 
-              {/* Thumbnail URL Input */}
+              {/* Thumbnail Upload or URL */}
+              {!formData.thumbnailUrl && (
+                <div className="aspect-video rounded-lg border-2 border-dashed border-border/50 flex flex-col items-center justify-center bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors relative">
+                  <input type="file" accept="image/*" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onChange={handleThumbnailUpload} />
+                  <Upload className="h-6 w-6 text-muted-foreground mb-2" />
+                  <span className="text-xs font-medium">Click to upload thumbnail</span>
+                  <span className="text-[10px] text-muted-foreground mt-1">or paste URL below</span>
+                </div>
+              )}
+
               <div className="flex flex-col gap-2">
                 <span className="text-xs font-medium flex items-center gap-1"><LinkIcon className="h-3 w-3" /> Paste Image URL</span>
                 <Input 
