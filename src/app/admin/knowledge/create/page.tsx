@@ -423,10 +423,10 @@ export default function CreateKnowledgePage() {
                       <h3 className="font-heading text-md font-bold flex items-center gap-2 mb-1">
                         <LinkIcon className="h-4 w-4" /> Add by Links
                       </h3>
-                      <p className="text-xs text-muted-foreground">Paste direct URLs (one per line) to upload multiple files.</p>
+                      <p className="text-xs text-muted-foreground">Paste direct URLs (one per line). Format: <code>URL | Note</code> (optional).</p>
                     </div>
                     <Textarea 
-                      placeholder="https://example.com/image1.jpg&#10;https://example.com/video.mp4" 
+                      placeholder="https://example.com/image1.jpg | My Image Note&#10;https://youtube.com/watch?v=... | Cool YouTube Video" 
                       className="min-h-[80px] text-sm resize-none" 
                       value={urlInput}
                       onChange={(e) => setUrlInput(e.target.value)}
@@ -436,20 +436,38 @@ export default function CreateKnowledgePage() {
                       size="sm" 
                       className="w-full"
                       onClick={() => {
-                        const urls = urlInput.split('\n').map(u => u.trim()).filter(u => u);
-                        if (urls.length > 0) {
-                          const images = urls.filter(u => u.match(/\.(jpeg|jpg|gif|png|webp)$/i) || u.includes("image"));
-                          const videos = urls.filter(u => u.match(/\.(mp4|webm|ogg)$/i) || u.includes("video")).map((v, i) => ({ id: `vid-${Date.now()}-${i}`, title: `Video ${i+1}`, url: v, duration: "Unknown" }));
-                          const files = urls.filter(u => !images.includes(u) && !videos.find(vid => vid.url === u)).map((f, i) => ({ id: `file-${Date.now()}-${i}`, name: `Document ${i+1}`, url: f, size: "Unknown", type: "Link" }));
+                        const lines = urlInput.split('\n').map(u => u.trim()).filter(u => u);
+                        if (lines.length > 0) {
+                          const newImages: string[] = [];
+                          const newVideos: any[] = [];
+                          const newFiles: any[] = [];
+
+                          lines.forEach((line, i) => {
+                            const [urlPart, notePart] = line.split('|').map(s => s.trim());
+                            const url = urlPart;
+                            const note = notePart || `Link ${i+1}`;
+                            
+                            const isImage = url.match(/\.(jpeg|jpg|gif|png|webp)$/i);
+                            const isYouTube = url.includes("youtube.com") || url.includes("youtu.be");
+                            const isVideo = url.match(/\.(mp4|webm|ogg)$/i) || isYouTube || url.includes("video");
+
+                            if (isImage && !notePart) {
+                              newImages.push(url);
+                            } else if (isVideo) {
+                              newVideos.push({ id: `vid-${Date.now()}-${i}`, title: note, url: url, duration: "Unknown" });
+                            } else {
+                              newFiles.push({ id: `file-${Date.now()}-${i}`, name: note, url: url, size: "Unknown", type: "Web Link" });
+                            }
+                          });
                           
                           setFormData({
                             ...formData,
-                            contentImages: [...formData.contentImages, ...images],
-                            videos: [...formData.videos, ...videos],
-                            files: [...formData.files, ...files]
+                            contentImages: [...formData.contentImages, ...newImages],
+                            videos: [...formData.videos, ...newVideos],
+                            files: [...formData.files, ...newFiles]
                           });
                           setUrlInput("");
-                          toast.success(`${urls.length} links added to media!`);
+                          toast.success(`${lines.length} links added to media!`);
                         }
                       }}
                     >Add URLs to Media</Button>

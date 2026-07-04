@@ -199,15 +199,34 @@ export default function KnowledgeDetailPage({ params }: { params: Promise<{ slug
             <section>
               <h2 className="font-heading text-2xl font-semibold mb-6">Video Recordings</h2>
               <div className="grid grid-cols-1 gap-4">
-                {content.videos.map((vid: any) => (
-                  <div key={vid.id} className="rounded-xl overflow-hidden border border-border/50 shadow-sm bg-black">
-                    <video src={vid.url} controls className="w-full max-h-[60vh] outline-none" />
-                    <div className="p-3 bg-card flex justify-between items-center">
-                      <span className="font-medium text-sm truncate pr-2">{vid.title}</span>
-                      <Badge variant="secondary" className="shrink-0">{vid.duration}</Badge>
+                {content.videos.map((vid: any) => {
+                  const isYouTube = vid.url.includes("youtube.com") || vid.url.includes("youtu.be");
+                  let ytEmbedUrl = "";
+                  if (isYouTube) {
+                    const videoId = vid.url.includes("v=") ? vid.url.split("v=")[1].split("&")[0] : vid.url.split("/").pop();
+                    ytEmbedUrl = `https://www.youtube.com/embed/${videoId}`;
+                  }
+                  
+                  return (
+                    <div key={vid.id} className="rounded-xl overflow-hidden border border-border/50 shadow-sm bg-black">
+                      {isYouTube ? (
+                        <iframe 
+                          src={ytEmbedUrl} 
+                          title={vid.title}
+                          className="w-full aspect-video" 
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                          allowFullScreen
+                        />
+                      ) : (
+                        <video src={vid.url} controls className="w-full max-h-[60vh] outline-none" />
+                      )}
+                      <div className="p-3 bg-card flex justify-between items-center">
+                        <span className="font-medium text-sm truncate pr-2">{vid.title}</span>
+                        <Badge variant="secondary" className="shrink-0">{vid.duration}</Badge>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </section>
           )}
