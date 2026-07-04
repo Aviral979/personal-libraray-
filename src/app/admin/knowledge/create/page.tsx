@@ -22,6 +22,7 @@ import {
 import { toast } from "sonner";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import Tesseract from 'tesseract.js';
 
 export default function CreateKnowledgePage() {
   const router = useRouter();
@@ -29,6 +30,8 @@ export default function CreateKnowledgePage() {
   const [isUploading, setIsUploading] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [ocrText, setOcrText] = useState("");
+  const [ocrImage, setOcrImage] = useState<string | null>(null);
+  const [ocrProgress, setOcrProgress] = useState<number>(0);
 
   // Direct file upload to Firebase Storage
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -178,12 +181,32 @@ export default function CreateKnowledgePage() {
 
   const handleScanImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      const imageUrl = URL.createObjectURL(file);
+      setOcrImage(imageUrl);
       setIsScanning(true);
-      // Simulate OCR processing time
-      await new Promise(res => setTimeout(res, 1500));
-      setOcrText("This is the extracted text from your scanned image. It contains details about the UI components, layout spacing, and typography choices. You can easily select this and paste it right into your description or notes.");
-      setIsScanning(false);
-      toast.success("Image scanned successfully!");
+      setOcrProgress(0);
+      setOcrText("");
+      
+      try {
+        const result = await Tesseract.recognize(
+          file,
+          'eng',
+          { logger: m => {
+              if (m.status === 'recognizing text') {
+                setOcrProgress(Math.floor(m.progress * 100));
+              }
+            } 
+          }
+        );
+        setOcrText(result.data.text);
+        toast.success("Image scanned successfully!");
+      } catch (error) {
+        console.error("OCR Error:", error);
+        toast.error("Failed to extract text from image.");
+      } finally {
+        setIsScanning(false);
+      }
     }
   };
 
@@ -338,21 +361,34 @@ export default function CreateKnowledgePage() {
                       </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
-                      <div className="relative border-2 border-dashed border-border rounded-xl p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-muted/50 transition-colors h-40">
-                        <input type="file" accept="image/*" onChange={handleScanImage} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" title="Upload Image for OCR" />
-                        {isScanning ? (
-                          <>
-                            <Loader2 className="h-8 w-8 text-brand-indigo animate-spin mb-3" />
-                            <p className="text-sm font-medium">Scanning image...</p>
-                          </>
-                        ) : (
-                          <>
-                            <ScanText className="h-8 w-8 text-muted-foreground mb-3" />
-                            <p className="text-sm font-medium">Click or Drop image to scan</p>
-                            <p className="text-xs text-muted-foreground mt-1">Supports JPG, PNG</p>
-                          </>
-                        )}
-                      </div>
+                      {ocrImage ? (
+                        <div className="relative border-2 border-border rounded-xl overflow-hidden h-40 bg-muted/30">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={ocrImage} alt="OCR Preview" className="w-full h-full object-contain" />
+                          {isScanning ? (
+                            <div className="absolute inset-0 bg-background/80 flex flex-col items-center justify-center backdrop-blur-sm">
+                              <Loader2 className="h-8 w-8 text-brand-indigo animate-spin mb-3" />
+                              <p className="text-sm font-medium">Scanning... {ocrProgress}%</p>
+                            </div>
+                          ) : (
+                            <div className="absolute top-2 right-2 flex gap-2">
+                              <Button size="icon" variant="secondary" className="h-8 w-8 shadow-sm cursor-pointer" onClick={() => {
+                                setOcrImage(null);
+                                setOcrText("");
+                              }}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="relative border-2 border-dashed border-border rounded-xl p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-muted/50 transition-colors h-40">
+                          <input type="file" accept="image/*" onChange={handleScanImage} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" title="Upload Image for OCR" />
+                          <ScanText className="h-8 w-8 text-muted-foreground mb-3" />
+                          <p className="text-sm font-medium">Click or Drop image to scan</p>
+                          <p className="text-xs text-muted-foreground mt-1">Supports JPG, PNG</p>
+                        </div>
+                      )}
                       <div className="space-y-2 relative">
                         <Label>Extracted Text</Label>
                         <Textarea 
