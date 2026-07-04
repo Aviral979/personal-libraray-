@@ -32,6 +32,8 @@ export default function CreateKnowledgePage() {
   const [ocrText, setOcrText] = useState("");
   const [ocrImage, setOcrImage] = useState<string | null>(null);
   const [ocrProgress, setOcrProgress] = useState<number>(0);
+  const [ocrLines, setOcrLines] = useState<any[]>([]);
+  const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
 
   // Direct file upload to Firebase Storage
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -183,10 +185,18 @@ export default function CreateKnowledgePage() {
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
       const imageUrl = URL.createObjectURL(file);
+      
+      const img = new window.Image();
+      img.src = imageUrl;
+      img.onload = () => {
+        setImageSize({ width: img.naturalWidth, height: img.naturalHeight });
+      };
+
       setOcrImage(imageUrl);
       setIsScanning(true);
       setOcrProgress(0);
       setOcrText("");
+      setOcrLines([]);
       
       try {
         const result = await Tesseract.recognize(
@@ -200,7 +210,8 @@ export default function CreateKnowledgePage() {
           }
         );
         setOcrText(result.data.text);
-        toast.success("Image scanned successfully!");
+        setOcrLines((result.data as any).lines || []);
+        toast.success("Image scanned successfully! Select text over the image to copy.");
       } catch (error) {
         console.error("OCR Error:", error);
         toast.error("Failed to extract text from image.");
@@ -353,33 +364,66 @@ export default function CreateKnowledgePage() {
                       <ScanText className="h-4 w-4" />
                       OCR Scanner
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-[500px]">
+                  <DialogContent className="sm:max-w-[700px]">
                     <DialogHeader>
                       <DialogTitle className="flex items-center gap-2"><ScanText className="h-5 w-5 text-brand-indigo"/> OCR Image Scanner</DialogTitle>
                       <DialogDescription>
-                        Upload or paste an image to extract text content automatically.
+                        Upload an image. Once scanned, you can select and copy the text directly from the image (like Google Lens).
                       </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                       {ocrImage ? (
-                        <div className="relative border-2 border-border rounded-xl overflow-hidden h-40 bg-muted/30">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={ocrImage} alt="OCR Preview" className="w-full h-full object-contain" />
-                          {isScanning ? (
-                            <div className="absolute inset-0 bg-background/80 flex flex-col items-center justify-center backdrop-blur-sm">
-                              <Loader2 className="h-8 w-8 text-brand-indigo animate-spin mb-3" />
-                              <p className="text-sm font-medium">Scanning... {ocrProgress}%</p>
-                            </div>
-                          ) : (
-                            <div className="absolute top-2 right-2 flex gap-2">
-                              <Button size="icon" variant="secondary" className="h-8 w-8 shadow-sm cursor-pointer" onClick={() => {
-                                setOcrImage(null);
-                                setOcrText("");
-                              }}>
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          )}
+                        <div className="relative border-2 border-border rounded-xl bg-muted/30 overflow-y-auto max-h-[500px]">
+                          <div className="relative w-full" style={{ minHeight: '200px' }}>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={ocrImage} alt="OCR Preview" className="w-full h-auto block pointer-events-none" />
+                            
+                            {isScanning ? (
+                              <div className="absolute inset-0 bg-background/60 flex flex-col items-center justify-center backdrop-blur-sm z-20">
+                                <Loader2 className="h-8 w-8 text-brand-indigo animate-spin mb-3" />
+                                <p className="text-sm font-medium">Scanning... {ocrProgress}%</p>
+                              </div>
+                            ) : (
+                              <>
+                                <div className="absolute top-2 right-2 flex gap-2 z-20">
+                                  <Button size="icon" variant="secondary" className="h-8 w-8 shadow-sm cursor-pointer" onClick={() => {
+                                    setOcrImage(null);
+                                    setOcrText("");
+                                    setOcrLines([]);
+                                  }}>
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+
+                                {/* Text Overlays */}
+                                {imageSize.width > 0 && ocrLines.map((line, i) => {
+                                  const { x0, y0, x1, y1 } = line.bbox;
+                                  const left = (x0 / imageSize.width) * 100;
+                                  const top = (y0 / imageSize.height) * 100;
+                                  const width = ((x1 - x0) / imageSize.width) * 100;
+                                  const height = ((y1 - y0) / imageSize.height) * 100;
+
+                                  return (
+                                    <span 
+                                      key={i}
+                                      className="absolute text-transparent selection:bg-brand-indigo/40 selection:text-brand-indigo/90 cursor-text overflow-hidden"
+                                      style={{
+                                        left: `${left}%`,
+                                        top: `${top}%`,
+                                        width: `${width}%`,
+                                        height: `${height}%`,
+                                        fontSize: '2vw', // Fallback to make selection height somewhat reasonable
+                                        lineHeight: 1
+                                      }}
+                                      title={line.text}
+                                    >
+                                      {line.text}
+                                    </span>
+                                  );
+                                })}
+                              </>
+                            )}
+                          </div>
                         </div>
                       ) : (
                         <div className="relative border-2 border-dashed border-border rounded-xl p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-muted/50 transition-colors h-40">
@@ -389,21 +433,24 @@ export default function CreateKnowledgePage() {
                           <p className="text-xs text-muted-foreground mt-1">Supports JPG, PNG</p>
                         </div>
                       )}
-                      <div className="space-y-2 relative">
-                        <Label>Extracted Text</Label>
-                        <Textarea 
-                          placeholder="Extracted content will appear here..." 
-                          className="min-h-[150px] resize-none pr-10"
-                          value={ocrText}
-                          onChange={(e) => setOcrText(e.target.value)}
-                        />
-                        <Button size="icon" variant="ghost" type="button" className="absolute right-2 top-8 h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => {
-                          navigator.clipboard.writeText(ocrText);
-                          toast.success("Text copied to clipboard!");
-                        }}>
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                      </div>
+                      
+                      {ocrText && (
+                        <div className="space-y-2 relative mt-2">
+                          <Label>Raw Extracted Text (Fallback)</Label>
+                          <Textarea 
+                            placeholder="Extracted content will appear here..." 
+                            className="min-h-[100px] resize-y pr-10 text-xs"
+                            value={ocrText}
+                            onChange={(e) => setOcrText(e.target.value)}
+                          />
+                          <Button size="icon" variant="ghost" type="button" className="absolute right-2 top-8 h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => {
+                            navigator.clipboard.writeText(ocrText);
+                            toast.success("Text copied to clipboard!");
+                          }}>
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </DialogContent>
                 </Dialog>
