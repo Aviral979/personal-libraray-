@@ -44,23 +44,11 @@ const sidebarItems = [
       { href: "/admin/knowledge", icon: BookOpen, label: "Knowledge Library" },
       { href: "/admin/knowledge/create", icon: PlusCircle, label: "Create Knowledge" },
       { href: "/admin/categories", icon: FolderOpen, label: "Categories" },
-      { href: "/admin/tags", icon: Tags, label: "Tags" },
-      { href: "/admin/collections", icon: Library, label: "Collections" },
-    ],
-  },
-  {
-    group: "Media",
-    items: [
-      { href: "/admin/media", icon: ImageIcon, label: "Media Library" },
-      { href: "/admin/ocr", icon: ScanText, label: "OCR Workspace" },
     ],
   },
   {
     group: "Management",
     items: [
-      { href: "/admin/search", icon: Search, label: "Search Manager" },
-      { href: "/admin/pages", icon: FileEdit, label: "Pages" },
-      { href: "/admin/seo", icon: BarChart3, label: "SEO" },
       { href: "/admin/analytics", icon: BarChart3, label: "Analytics" },
     ],
   },

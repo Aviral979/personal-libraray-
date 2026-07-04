@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { PlusCircle, Search, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { PlusCircle, Search, ExternalLink, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -12,21 +12,46 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
+import { db } from "@/lib/firebase";
+import { collection, getDocs } from "firebase/firestore";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function CategoriesAdminPage() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [categories, setCategories] = useState<{name: string, slug: string, items: number}[]>([]);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
-  // Empty data as requested
-  const categories: any[] = [];
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const querySnapshot = await getDocs(collection(db, "knowledgeItems"));
+        const catMap = new Map<string, number>();
+        
+        querySnapshot.forEach((doc) => {
+          const cat = doc.data().category;
+          if (cat) {
+            catMap.set(cat, (catMap.get(cat) || 0) + 1);
+          }
+        });
+
+        const formattedCats = Array.from(catMap.entries()).map(([name, count]) => ({
+          name,
+          slug: name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, ''),
+          items: count
+        })).sort((a, b) => a.name.localeCompare(b.name));
+        
+        setCategories(formattedCats);
+      } catch (error) {
+        console.error("Error fetching categories:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchCategories();
+  }, []);
 
   const filteredCategories = categories.filter(c => 
     c.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -42,10 +67,12 @@ export default function CategoriesAdminPage() {
             Manage the categories used to organize your knowledge.
           </p>
         </div>
-        <Button className="gap-2 cursor-pointer">
-          <PlusCircle className="h-4 w-4" />
-          New Category
-        </Button>
+        <Link href="/admin/knowledge/create">
+          <Button className="gap-2 cursor-pointer">
+            <PlusCircle className="h-4 w-4" />
+            New Item with New Category
+          </Button>
+        </Link>
       </div>
 
       <div className="flex items-center gap-2 max-w-sm">
@@ -67,45 +94,36 @@ export default function CategoriesAdminPage() {
               <TableHead>Name</TableHead>
               <TableHead>Slug</TableHead>
               <TableHead className="text-right">Items</TableHead>
-              <TableHead className="hidden md:table-cell">Last Updated</TableHead>
-              <TableHead className="w-[80px]"></TableHead>
+              <TableHead className="w-[100px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredCategories.length > 0 ? filteredCategories.map((category) => (
-              <TableRow key={category.id}>
-                <TableCell className="font-medium">{category.name}</TableCell>
-                <TableCell>
-                  <Badge variant="secondary" className="font-mono text-xs">
-                    {category.slug}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right">{category.items}</TableCell>
-                <TableCell className="hidden md:table-cell text-muted-foreground">
-                  {category.lastUpdated}
-                </TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none hover:bg-accent hover:text-accent-foreground h-8 w-8 p-0 cursor-pointer">
-                      <span className="sr-only">Open menu</span>
-                      <MoreHorizontal className="h-4 w-4" />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                      <DropdownMenuItem className="cursor-pointer">
-                        <Pencil className="mr-2 h-4 w-4" /> Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem className="cursor-pointer text-destructive focus:text-destructive">
-                        <Trash2 className="mr-2 h-4 w-4" /> Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={4} className="h-24 text-center">
+                  <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
                 </TableCell>
               </TableRow>
-            )) : (
+            ) : filteredCategories.length > 0 ? (
+              filteredCategories.map((category) => (
+                <TableRow key={category.slug} className="cursor-pointer hover:bg-muted/50" onClick={() => router.push(`/admin/categories/${category.slug}?name=${encodeURIComponent(category.name)}`)}>
+                  <TableCell className="font-medium text-brand-indigo">{category.name}</TableCell>
+                  <TableCell>
+                    <Badge variant="secondary" className="font-mono text-xs">
+                      {category.slug}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right font-medium">{category.items}</TableCell>
+                  <TableCell>
+                    <Button variant="ghost" size="sm" className="gap-1 cursor-pointer" onClick={(e) => { e.stopPropagation(); router.push(`/admin/categories/${category.slug}?name=${encodeURIComponent(category.name)}`); }}>
+                      View <ExternalLink className="h-3 w-3" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">
+                <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
                   No categories found.
                 </TableCell>
               </TableRow>
