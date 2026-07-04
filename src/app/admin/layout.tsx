@@ -56,7 +56,6 @@ const sidebarItems = [
     group: "System",
     items: [
       { href: "/admin/settings", icon: Settings, label: "Settings" },
-      { href: "/admin/backup", icon: Database, label: "Backup" },
       { href: "/admin/trash", icon: Trash2, label: "Trash" },
     ],
   },

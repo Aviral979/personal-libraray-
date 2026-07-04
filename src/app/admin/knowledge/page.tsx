@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PlusCircle, Search, MoreHorizontal, Pencil, Trash2, Eye } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, deleteDoc, doc, query, orderBy } from "firebase/firestore";
+import { collection, getDocs, updateDoc, doc, query, orderBy, Timestamp } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -40,20 +40,22 @@ export default function KnowledgeAdminPage() {
       try {
         const q = query(collection(db, "knowledgeItems"));
         const querySnapshot = await getDocs(q);
-        const fetchedItems = querySnapshot.docs.map(doc => {
-          const data = doc.data();
-          let dateStr = new Date().toLocaleDateString();
-          if (data.date) {
-            try {
-              dateStr = new Date(data.date).toLocaleDateString();
-            } catch (e) {}
-          }
-          return {
-            id: doc.id,
-            ...data,
-            date: dateStr
-          };
-        });
+        const fetchedItems = querySnapshot.docs
+          .filter(doc => !doc.data().deletedAt)
+          .map(doc => {
+            const data = doc.data();
+            let dateStr = new Date().toLocaleDateString();
+            if (data.date) {
+              try {
+                dateStr = new Date(data.date).toLocaleDateString();
+              } catch (e) {}
+            }
+            return {
+              id: doc.id,
+              ...data,
+              date: dateStr
+            };
+          });
         setKnowledgeItems(fetchedItems);
       } catch (error) {
         console.error("Error fetching from Firebase:", error);
@@ -62,14 +64,18 @@ export default function KnowledgeAdminPage() {
     fetchKnowledge();
   }, []);
 
-  const handleDelete = async (id: string) => {
-    try {
-      await deleteDoc(doc(db, "knowledgeItems", id));
-      setKnowledgeItems(prev => prev.filter(item => item.id !== id));
-      toast.success("Knowledge item moved to trash (deleted from Firebase)");
-    } catch (error) {
-      console.error("Error deleting from Firebase:", error);
-      toast.error("Failed to delete item from Firebase");
+  const handleDelete = async (id: string, title: string) => {
+    if (confirm(`This content is being removed from the website, but will remain in the Trash page for 2 days. Are you sure you want to delete "${title}"?`)) {
+      try {
+        await updateDoc(doc(db, "knowledgeItems", id), {
+          deletedAt: Timestamp.now()
+        });
+        setKnowledgeItems(prev => prev.filter(item => item.id !== id));
+        toast.success("Item moved to trash");
+      } catch (error) {
+        console.error("Error moving to trash:", error);
+        toast.error("Failed to delete item");
+      }
     }
   };
 
@@ -152,11 +158,9 @@ export default function KnowledgeAdminPage() {
                 </TableCell>
                 <TableCell>
                   <DropdownMenu>
-                    <DropdownMenuTrigger render={
-                      <Button variant="ghost" className="h-8 w-8 p-0 cursor-pointer" />
-                    }>
-                        <span className="sr-only">Open menu</span>
-                        <MoreHorizontal className="h-4 w-4" />
+                    <DropdownMenuTrigger className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none hover:bg-accent hover:text-accent-foreground h-8 w-8 p-0 cursor-pointer">
+                      <span className="sr-only">Open menu</span>
+                      <MoreHorizontal className="h-4 w-4" />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuGroup>
@@ -169,8 +173,8 @@ export default function KnowledgeAdminPage() {
                         </DropdownMenuItem>
                       </DropdownMenuGroup>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem className="cursor-pointer text-destructive focus:text-destructive" onClick={() => handleDelete(item.id)}>
-                        <Trash2 className="mr-2 h-4 w-4" /> Trash
+                      <DropdownMenuItem className="cursor-pointer text-destructive focus:text-destructive" onClick={() => handleDelete(item.id, item.title)}>
+                        <Trash2 className="mr-2 h-4 w-4" /> Move to Trash
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>

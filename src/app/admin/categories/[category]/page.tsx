@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { db } from "@/lib/firebase";
-import { collection, query, where, getDocs, deleteDoc, doc } from "firebase/firestore";
+import { collection, query, where, getDocs, updateDoc, doc, Timestamp } from "firebase/firestore";
 import { format } from "date-fns";
 import { 
   ArrowLeft, 
@@ -59,7 +59,10 @@ export default function CategoryDetailPage() {
         
         const fetchedItems: any[] = [];
         querySnapshot.forEach((doc) => {
-          fetchedItems.push({ id: doc.id, ...doc.data() });
+          const data = doc.data();
+          if (!data.deletedAt) {
+            fetchedItems.push({ id: doc.id, ...data });
+          }
         });
         
         // Sort by date (assuming they have createdAt)
@@ -84,13 +87,15 @@ export default function CategoryDetailPage() {
   }, [categoryName]);
 
   const handleDelete = async (id: string, title: string) => {
-    if (confirm(`Are you sure you want to delete "${title}"?`)) {
+    if (confirm(`This content is being removed from the website, but will remain in the Trash page for 2 days. Are you sure you want to delete "${title}"?`)) {
       try {
-        await deleteDoc(doc(db, "knowledgeItems", id));
+        await updateDoc(doc(db, "knowledgeItems", id), {
+          deletedAt: Timestamp.now()
+        });
         setItems(items.filter(item => item.id !== id));
-        toast.success("Item deleted successfully");
+        toast.success("Item moved to trash");
       } catch (error) {
-        console.error("Error deleting item:", error);
+        console.error("Error moving item to trash:", error);
         toast.error("Failed to delete item");
       }
     }
@@ -145,7 +150,8 @@ export default function CategoryDetailPage() {
               <TableHead>Title</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Visibility</TableHead>
-              <TableHead className="hidden md:table-cell">Created</TableHead>
+              <TableHead>Views</TableHead>
+              <TableHead className="hidden md:table-cell">Date Created</TableHead>
               <TableHead className="w-[80px]"></TableHead>
             </TableRow>
           </TableHeader>
@@ -176,6 +182,9 @@ export default function CategoryDetailPage() {
                       {item.visibility || 'PUBLIC'}
                     </div>
                   </TableCell>
+                  <TableCell>
+                    <div className="font-medium text-muted-foreground">{item.views || 0}</div>
+                  </TableCell>
                   <TableCell className="hidden md:table-cell text-muted-foreground text-sm">
                     {item.createdAt?.toMillis ? format(item.createdAt.toMillis(), 'MMM d, yyyy') : 'Unknown'}
                   </TableCell>
@@ -195,7 +204,7 @@ export default function CategoryDetailPage() {
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem className="cursor-pointer text-destructive focus:text-destructive" onClick={() => handleDelete(item.id, item.title)}>
-                          <Trash2 className="mr-2 h-4 w-4" /> Delete
+                          <Trash2 className="mr-2 h-4 w-4" /> Move to Trash
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
