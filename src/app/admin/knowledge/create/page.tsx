@@ -132,6 +132,7 @@ export default function CreateKnowledgePage() {
   });
 
   const [urlInput, setUrlInput] = useState("");
+  const [urlNoteInput, setUrlNoteInput] = useState("");
 
   // Load existing data if editing
   useEffect(() => {
@@ -379,103 +380,68 @@ export default function CreateKnowledgePage() {
               </div>
 
               <div className="space-y-4">
-                <Label className="font-semibold">Upload Files & Media</Label>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Method 1: Direct Upload */}
-                  <div className="border-dashed border-2 border-border/60 bg-muted/20 rounded-xl p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-muted/40 transition-colors relative h-full">
-                    <input 
-                      type="file" 
-                      multiple 
-                      accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar" 
-                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
-                      title="Select multiple files" 
-                      onChange={handleFileUpload}
-                      disabled={isUploading}
-                    />
-                    {isUploading ? (
-                      <>
-                        <Loader2 className="h-8 w-8 text-brand-indigo animate-spin mb-3" />
-                        <h3 className="font-heading text-md font-bold mb-1">Uploading...</h3>
-                        <p className="text-xs text-muted-foreground">Please wait while files are being uploaded to cloud</p>
-                      </>
-                    ) : (
-                      <>
-                        <div className="flex items-center gap-3 mb-3">
-                          <ImageIcon className="h-5 w-5 text-brand-indigo" />
-                          <Video className="h-5 w-5 text-brand-success" />
-                          <FileText className="h-5 w-5 text-brand-warning" />
-                        </div>
-                        <h3 className="font-heading text-md font-bold mb-1">Direct Upload</h3>
-                        <p className="text-xs text-muted-foreground mb-4">
-                          Drag & Drop or Browse (Multiple allowed)
-                        </p>
-                        <Button variant="outline" size="sm" className="gap-2 pointer-events-none">
-                          <Upload className="h-3 w-3" />
-                          Browse
-                        </Button>
-                      </>
-                    )}
+                <Label className="font-semibold">Add Media by Link</Label>
+                <div className="border border-border/60 bg-muted/10 rounded-xl p-6 space-y-4">
+                  <div>
+                    <h3 className="font-heading text-md font-bold flex items-center gap-2 mb-1">
+                      <LinkIcon className="h-4 w-4" /> Add External URL
+                    </h3>
+                    <p className="text-xs text-muted-foreground">Add YouTube links, website articles, or direct image URLs.</p>
                   </div>
-
-                  {/* Method 2: By Link */}
-                  <div className="border border-border/60 bg-muted/10 rounded-xl p-6 flex flex-col justify-center space-y-4">
-                    <div>
-                      <h3 className="font-heading text-md font-bold flex items-center gap-2 mb-1">
-                        <LinkIcon className="h-4 w-4" /> Add by Links
-                      </h3>
-                      <p className="text-xs text-muted-foreground">Paste direct URLs (one per line). Format: <code>URL | Note</code> (optional).</p>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-xs">URL / Link</Label>
+                      <Input 
+                        placeholder="https://youtube.com/watch?v=..." 
+                        className="text-sm" 
+                        value={urlInput}
+                        onChange={(e) => setUrlInput(e.target.value)}
+                      />
                     </div>
-                    <Textarea 
-                      placeholder="https://example.com/image1.jpg | My Image Note&#10;https://youtube.com/watch?v=... | Cool YouTube Video" 
-                      className="min-h-[80px] text-sm resize-none" 
-                      value={urlInput}
-                      onChange={(e) => setUrlInput(e.target.value)}
-                    />
-                    <Button 
-                      variant="secondary" 
-                      size="sm" 
-                      className="w-full"
-                      onClick={() => {
-                        const lines = urlInput.split('\n').map(u => u.trim()).filter(u => u);
-                        if (lines.length > 0) {
-                          const newImages: string[] = [];
-                          const newVideos: any[] = [];
-                          const newFiles: any[] = [];
-
-                          lines.forEach((line, i) => {
-                            const [urlPart, notePart] = line.split('|').map(s => s.trim());
-                            const url = urlPart;
-                            const note = notePart || `Link ${i+1}`;
-                            
-                            const isImage = url.match(/\.(jpeg|jpg|gif|png|webp)$/i);
-                            const isYouTube = url.includes("youtube.com") || url.includes("youtu.be");
-                            const isVideo = url.match(/\.(mp4|webm|ogg)$/i) || isYouTube || url.includes("video");
-
-                            if (isImage && !notePart) {
-                              newImages.push(url);
-                            } else if (isVideo) {
-                              newVideos.push({ id: `vid-${Date.now()}-${i}`, title: note, url: url, duration: "Unknown" });
-                            } else {
-                              newFiles.push({ id: `file-${Date.now()}-${i}`, name: note, url: url, size: "Unknown", type: "Web Link" });
-                            }
-                          });
-                          
-                          setFormData({
-                            ...formData,
-                            contentImages: [...formData.contentImages, ...newImages],
-                            videos: [...formData.videos, ...newVideos],
-                            files: [...formData.files, ...newFiles]
-                          });
-                          setUrlInput("");
-                          toast.success(`${lines.length} links added to media!`);
-                        }
-                      }}
-                    >Add URLs to Media</Button>
-                    
-                    {formData.contentImages.length > 0 && (
-                       <p className="text-xs text-brand-success">{formData.contentImages.length} images, {formData.videos.length} videos added.</p>
-                    )}
+                    <div className="space-y-2">
+                      <Label className="text-xs">Note / Title (Optional)</Label>
+                      <Input 
+                        placeholder="My awesome video" 
+                        className="text-sm" 
+                        value={urlNoteInput}
+                        onChange={(e) => setUrlNoteInput(e.target.value)}
+                      />
+                    </div>
                   </div>
+
+                  <Button 
+                    variant="secondary" 
+                    className="w-full gap-2"
+                    onClick={() => {
+                      if (!urlInput.trim()) {
+                        toast.error("Please enter a URL");
+                        return;
+                      }
+
+                      const url = urlInput.trim();
+                      const note = urlNoteInput.trim() || `Link ${formData.contentImages.length + formData.videos.length + formData.files.length + 1}`;
+                      
+                      const isImage = url.match(/\.(jpeg|jpg|gif|png|webp)$/i);
+                      const isYouTube = url.includes("youtube.com") || url.includes("youtu.be");
+                      const isVideo = url.match(/\.(mp4|webm|ogg)$/i) || isYouTube || url.includes("video");
+
+                      if (isImage && !urlNoteInput.trim()) {
+                        setFormData({ ...formData, contentImages: [...formData.contentImages, url] });
+                      } else if (isVideo) {
+                        setFormData({ ...formData, videos: [...formData.videos, { id: `vid-${Date.now()}`, title: note, url: url, duration: "Unknown" }] });
+                      } else {
+                        setFormData({ ...formData, files: [...formData.files, { id: `file-${Date.now()}`, name: note, url: url, size: "Unknown", type: "Web Link" }] });
+                      }
+                      
+                      setUrlInput("");
+                      setUrlNoteInput("");
+                      toast.success("Link added to media!");
+                    }}
+                  >
+                    <Upload className="h-4 w-4" />
+                    Add URL to Media
+                  </Button>
                 </div>
               </div>
 
@@ -483,7 +449,9 @@ export default function CreateKnowledgePage() {
               <div className="space-y-4 pt-2">
                 {(formData.contentImages.length > 0 || formData.videos.length > 0 || formData.files.length > 0) && (
                   <div className="space-y-4">
-                    <h3 className="font-heading text-sm font-bold border-b border-border/50 pb-2">Media Preview</h3>
+                    <h3 className="font-heading text-sm font-bold border-b border-border/50 pb-2 flex items-center gap-2">
+                      Added Media
+                    </h3>
                     
                     {/* Images Preview */}
                     {formData.contentImages.length > 0 && (
