@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Save, Loader2, Image as ImageIcon, Link as LinkIcon, FileText, Video, Upload, ScanText, Copy, Trash2 } from "lucide-react";
 import { db, storage } from "@/lib/firebase";
-import { collection, doc, setDoc, updateDoc, getDoc } from "firebase/firestore";
+import { collection, doc, setDoc, updateDoc, getDoc, getDocs } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -140,6 +140,25 @@ export default function CreateKnowledgePage() {
   const [urlNoteInput, setUrlNoteInput] = useState("");
   const [extUrlInput, setExtUrlInput] = useState("");
   const [extNoteInput, setExtNoteInput] = useState("");
+  const [existingCategories, setExistingCategories] = useState<string[]>([]);
+
+  // Fetch unique existing categories
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const querySnapshot = await getDocs(collection(db, "knowledgeItems"));
+        const cats = new Set<string>();
+        querySnapshot.forEach((doc) => {
+          const cat = doc.data().category;
+          if (cat) cats.add(cat);
+        });
+        setExistingCategories(Array.from(cats).sort());
+      } catch (error) {
+        console.error("Error fetching categories:", error);
+      }
+    };
+    fetchCategories();
+  }, []);
 
   // Load existing data if editing
   useEffect(() => {
@@ -224,6 +243,10 @@ export default function CreateKnowledgePage() {
   const handleSave = async () => {
     if (!formData.title) {
       toast.error("Title is required");
+      return;
+    }
+    if (!formData.category) {
+      toast.error("Category is required");
       return;
     }
     
@@ -772,13 +795,19 @@ export default function CreateKnowledgePage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="category">Category (Text)</Label>
+                <Label htmlFor="category">Category (Text) *</Label>
                 <Input
                   id="category"
+                  list="category-suggestions"
                   placeholder="e.g. Web Design"
                   value={formData.category}
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                 />
+                <datalist id="category-suggestions">
+                  {existingCategories.map((cat, i) => (
+                    <option key={i} value={cat} />
+                  ))}
+                </datalist>
               </div>
             </CardContent>
           </Card>
