@@ -36,7 +36,7 @@ export default function CreateKnowledgePage() {
     if (!files || files.length === 0) return;
 
     setIsUploading(true);
-    const uploadedImages: string[] = [];
+    const uploadedImages: { id: string; url: string; note: string }[] = [];
     const uploadedVideos: { id: string; title: string; url: string; duration: string }[] = [];
     const uploadedFiles: { id: string; name: string; url: string; size: string; type: string }[] = [];
 
@@ -52,7 +52,7 @@ export default function CreateKnowledgePage() {
         const downloadURL = await getDownloadURL(storageRef);
 
         if (file.type.startsWith('image/')) {
-          uploadedImages.push(downloadURL);
+          uploadedImages.push({ id: `img-${timestamp}-${i}`, url: downloadURL, note: `Image ${file.name}` });
         } else if (file.type.startsWith('video/')) {
           uploadedVideos.push({
             id: `vid-${timestamp}-${i}`,
@@ -124,15 +124,17 @@ export default function CreateKnowledgePage() {
     status: "DRAFT",
     visibility: "PUBLIC",
     category: "",
-    link: "",
     thumbnailUrl: "",
-    contentImages: [] as string[],
+    externalLinks: [] as { id: string; url: string; note: string }[],
+    contentImages: [] as { id: string; url: string; note: string }[],
     videos: [] as { id: string; title: string; url: string; duration: string }[],
     files: [] as { id: string; name: string; url: string; size: string; type: string }[]
   });
 
   const [urlInput, setUrlInput] = useState("");
   const [urlNoteInput, setUrlNoteInput] = useState("");
+  const [extUrlInput, setExtUrlInput] = useState("");
+  const [extNoteInput, setExtNoteInput] = useState("");
 
   // Load existing data if editing
   useEffect(() => {
@@ -155,9 +157,11 @@ export default function CreateKnowledgePage() {
                 status: editItem.status || "DRAFT",
                 visibility: editItem.visibility || "PUBLIC",
                 category: editItem.category || "",
-                link: editItem.link || "",
                 thumbnailUrl: editItem.thumbnail || "",
-                contentImages: editItem.contentImages || [],
+                externalLinks: editItem.externalLinks || (editItem.link ? [{id: `ext-${Date.now()}`, url: editItem.link, note: "External Link"}] : []),
+                contentImages: (editItem.contentImages || []).map((img: any, i: number) => 
+                  typeof img === 'string' ? { id: `img-${Date.now()}-${i}`, url: img, note: `Image ${i+1}` } : img
+                ),
                 videos: editItem.videos || [],
                 files: editItem.files || [],
               });
@@ -205,8 +209,8 @@ export default function CreateKnowledgePage() {
           category: formData.category || "Uncategorized",
           status: formData.status,
           visibility: formData.visibility,
-          link: formData.link,
-          thumbnail: formData.thumbnailUrl || (formData.contentImages.length > 0 ? formData.contentImages[0] : ""),
+          externalLinks: formData.externalLinks,
+          thumbnail: formData.thumbnailUrl || (formData.contentImages.length > 0 ? formData.contentImages[0].url : ""),
           contentImages: formData.contentImages,
           videos: formData.videos,
           files: formData.files,
@@ -223,10 +227,10 @@ export default function CreateKnowledgePage() {
           category: formData.category || "Uncategorized",
           status: formData.status,
           visibility: formData.visibility,
-          link: formData.link,
+          externalLinks: formData.externalLinks,
           views: 0,
           date: new Date().toISOString(), // store ISO string for consistency
-          thumbnail: formData.thumbnailUrl || (formData.contentImages.length > 0 ? formData.contentImages[0] : "/images/Default thumbnail placeholder (when admin doesn't upload one).png"), 
+          thumbnail: formData.thumbnailUrl || (formData.contentImages.length > 0 ? formData.contentImages[0].url : "/images/Default thumbnail placeholder (when admin doesn't upload one).png"), 
           contentImages: formData.contentImages,
           videos: formData.videos,
           files: formData.files,
@@ -369,29 +373,74 @@ export default function CreateKnowledgePage() {
                 </Dialog>
               </div>
               
-              <div className="space-y-2">
-                <Label htmlFor="link" className="font-semibold">External Link</Label>
-                <Input
-                  id="link"
-                  placeholder="e.g. https://example.com/article"
-                  value={formData.link}
-                  onChange={(e) => setFormData({ ...formData, link: e.target.value })}
-                />
-              </div>
-
               <div className="space-y-4">
-                <Label className="font-semibold">Add Media by Link</Label>
+                <Label className="font-semibold">Add External Links</Label>
                 <div className="border border-border/60 bg-muted/10 rounded-xl p-6 space-y-4">
                   <div>
                     <h3 className="font-heading text-md font-bold flex items-center gap-2 mb-1">
-                      <LinkIcon className="h-4 w-4" /> Add External URL
+                      <LinkIcon className="h-4 w-4" /> Add External Reference
                     </h3>
-                    <p className="text-xs text-muted-foreground">Add YouTube links, website articles, or direct image URLs.</p>
+                    <p className="text-xs text-muted-foreground">Add links to external websites, articles, or resources.</p>
                   </div>
                   
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label className="text-xs">URL / Link</Label>
+                      <Input 
+                        placeholder="https://example.com/article" 
+                        className="text-sm" 
+                        value={extUrlInput}
+                        onChange={(e) => setExtUrlInput(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">Note / Title</Label>
+                      <Input 
+                        placeholder="Read this article" 
+                        className="text-sm" 
+                        value={extNoteInput}
+                        onChange={(e) => setExtNoteInput(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <Button 
+                    variant="secondary" 
+                    className="w-full gap-2"
+                    onClick={() => {
+                      if (!extUrlInput.trim()) {
+                        toast.error("Please enter a URL");
+                        return;
+                      }
+                      const note = extNoteInput.trim() || `Reference ${formData.externalLinks.length + 1}`;
+                      setFormData({ 
+                        ...formData, 
+                        externalLinks: [...formData.externalLinks, { id: `ext-${Date.now()}`, url: extUrlInput.trim(), note }] 
+                      });
+                      setExtUrlInput("");
+                      setExtNoteInput("");
+                      toast.success("External link added!");
+                    }}
+                  >
+                    <Upload className="h-4 w-4" />
+                    Add External Link
+                  </Button>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <Label className="font-semibold">Add Media by Link (Images, Videos, Files)</Label>
+                <div className="border border-border/60 bg-muted/10 rounded-xl p-6 space-y-4">
+                  <div>
+                    <h3 className="font-heading text-md font-bold flex items-center gap-2 mb-1">
+                      <ImageIcon className="h-4 w-4" /> Add Embedded Media
+                    </h3>
+                    <p className="text-xs text-muted-foreground">Add YouTube links, direct image URLs, or file URLs that will embed directly in the content.</p>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-xs">Media URL</Label>
                       <Input 
                         placeholder="https://youtube.com/watch?v=..." 
                         className="text-sm" 
@@ -400,9 +449,9 @@ export default function CreateKnowledgePage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-xs">Note / Title (Optional)</Label>
+                      <Label className="text-xs">Media Note / Title</Label>
                       <Input 
-                        placeholder="My awesome video" 
+                        placeholder="My awesome media" 
                         className="text-sm" 
                         value={urlNoteInput}
                         onChange={(e) => setUrlNoteInput(e.target.value)}
@@ -420,14 +469,14 @@ export default function CreateKnowledgePage() {
                       }
 
                       const url = urlInput.trim();
-                      const note = urlNoteInput.trim() || `Link ${formData.contentImages.length + formData.videos.length + formData.files.length + 1}`;
+                      const note = urlNoteInput.trim() || `Media ${formData.contentImages.length + formData.videos.length + formData.files.length + 1}`;
                       
                       const isImage = url.match(/\.(jpeg|jpg|gif|png|webp)$/i);
                       const isYouTube = url.includes("youtube.com") || url.includes("youtu.be");
                       const isVideo = url.match(/\.(mp4|webm|ogg)$/i) || isYouTube || url.includes("video");
 
-                      if (isImage && !urlNoteInput.trim()) {
-                        setFormData({ ...formData, contentImages: [...formData.contentImages, url] });
+                      if (isImage && !isYouTube) {
+                        setFormData({ ...formData, contentImages: [...formData.contentImages, { id: `img-${Date.now()}`, url: url, note }] });
                       } else if (isVideo) {
                         setFormData({ ...formData, videos: [...formData.videos, { id: `vid-${Date.now()}`, title: note, url: url, duration: "Unknown" }] });
                       } else {
@@ -436,41 +485,86 @@ export default function CreateKnowledgePage() {
                       
                       setUrlInput("");
                       setUrlNoteInput("");
-                      toast.success("Link added to media!");
+                      toast.success("Media added!");
                     }}
                   >
                     <Upload className="h-4 w-4" />
-                    Add URL to Media
+                    Add Media Link
                   </Button>
                 </div>
               </div>
 
               {/* Media Preview Gallery */}
               <div className="space-y-4 pt-2">
-                {(formData.contentImages.length > 0 || formData.videos.length > 0 || formData.files.length > 0) && (
-                  <div className="space-y-4">
+                {(formData.externalLinks.length > 0 || formData.contentImages.length > 0 || formData.videos.length > 0 || formData.files.length > 0) && (
+                  <div className="space-y-6">
                     <h3 className="font-heading text-sm font-bold border-b border-border/50 pb-2 flex items-center gap-2">
-                      Added Media
+                      Added Content Preview
                     </h3>
+
+                    {/* External Links Preview */}
+                    {formData.externalLinks.length > 0 && (
+                      <div className="space-y-2">
+                        <Label className="text-xs text-muted-foreground">External Links ({formData.externalLinks.length})</Label>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {formData.externalLinks.map((ext, i) => (
+                            <div key={ext.id} className="flex flex-col gap-2 p-3 border border-border/50 rounded-lg bg-muted/20">
+                              <div className="flex justify-between items-center">
+                                <span className="text-xs font-medium truncate max-w-[200px]">{ext.url}</span>
+                                <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => {
+                                  const newList = [...formData.externalLinks];
+                                  newList.splice(i, 1);
+                                  setFormData({ ...formData, externalLinks: newList });
+                                }}>
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                              <Input 
+                                value={ext.note} 
+                                onChange={(e) => {
+                                  const newList = [...formData.externalLinks];
+                                  newList[i].note = e.target.value;
+                                  setFormData({ ...formData, externalLinks: newList });
+                                }} 
+                                className="h-8 text-xs bg-background" 
+                                placeholder="Note / Title" 
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                     
                     {/* Images Preview */}
                     {formData.contentImages.length > 0 && (
                       <div className="space-y-2">
                         <Label className="text-xs text-muted-foreground">Images ({formData.contentImages.length})</Label>
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                          {formData.contentImages.map((url, i) => (
-                            <div key={i} className="relative group aspect-square rounded-lg border border-border/50 overflow-hidden bg-muted">
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img src={url} alt={`Preview ${i}`} className="w-full h-full object-cover" onError={(e) => { e.currentTarget.src = "/images/Default thumbnail placeholder (when admin doesn't upload one).png" }} />
-                              <div className="absolute inset-0 bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                <Button size="icon" variant="destructive" className="h-8 w-8 cursor-pointer shadow-md" onClick={() => {
-                                  const newImages = [...formData.contentImages];
-                                  newImages.splice(i, 1);
-                                  setFormData({ ...formData, contentImages: newImages });
-                                }}>
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
+                          {formData.contentImages.map((img, i) => (
+                            <div key={img.id || i} className="flex flex-col gap-2">
+                              <div className="relative group aspect-square rounded-lg border border-border/50 overflow-hidden bg-muted">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={img.url} alt={`Preview ${i}`} className="w-full h-full object-cover" onError={(e) => { e.currentTarget.src = "/images/Default thumbnail placeholder (when admin doesn't upload one).png" }} />
+                                <div className="absolute inset-0 bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                  <Button size="icon" variant="destructive" className="h-8 w-8 cursor-pointer shadow-md" onClick={() => {
+                                    const newImages = [...formData.contentImages];
+                                    newImages.splice(i, 1);
+                                    setFormData({ ...formData, contentImages: newImages });
+                                  }}>
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
                               </div>
+                              <Input 
+                                value={img.note} 
+                                onChange={(e) => {
+                                  const newImages = [...formData.contentImages];
+                                  newImages[i].note = e.target.value;
+                                  setFormData({ ...formData, contentImages: newImages });
+                                }} 
+                                className="h-7 text-xs bg-muted/30" 
+                                placeholder="Image Note" 
+                              />
                             </div>
                           ))}
                         </div>
@@ -482,17 +576,29 @@ export default function CreateKnowledgePage() {
                       <div className="space-y-2">
                         <Label className="text-xs text-muted-foreground">Videos ({formData.videos.length})</Label>
                         <div className="flex flex-col gap-2">
-                          {formData.videos.map((vid) => (
-                            <div key={vid.id} className="flex items-center justify-between p-3 rounded-md border border-border/50 bg-muted/30">
-                              <div className="flex items-center gap-3 truncate">
+                          {formData.videos.map((vid, i) => (
+                            <div key={vid.id || i} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 gap-3 rounded-md border border-border/50 bg-muted/30">
+                              <div className="flex items-center gap-3 w-full sm:w-auto overflow-hidden">
                                 <Video className="h-4 w-4 text-brand-success shrink-0" />
-                                <span className="text-sm truncate">{vid.url}</span>
+                                <span className="text-xs text-muted-foreground truncate max-w-[150px]">{vid.url}</span>
                               </div>
-                              <Button size="icon" variant="ghost" className="h-8 w-8 cursor-pointer text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => {
-                                setFormData({ ...formData, videos: formData.videos.filter(v => v.id !== vid.id) });
-                              }}>
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                              <div className="flex items-center gap-2 w-full sm:w-auto">
+                                <Input 
+                                  value={vid.title} 
+                                  onChange={(e) => {
+                                    const newVideos = [...formData.videos];
+                                    newVideos[i].title = e.target.value;
+                                    setFormData({ ...formData, videos: newVideos });
+                                  }} 
+                                  className="h-8 text-xs bg-background flex-1 sm:w-48" 
+                                  placeholder="Video Title / Note" 
+                                />
+                                <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0 cursor-pointer text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => {
+                                  setFormData({ ...formData, videos: formData.videos.filter(v => v.id !== vid.id) });
+                                }}>
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -504,17 +610,29 @@ export default function CreateKnowledgePage() {
                       <div className="space-y-2">
                         <Label className="text-xs text-muted-foreground">Files ({formData.files.length})</Label>
                         <div className="flex flex-col gap-2">
-                          {formData.files.map((file) => (
-                            <div key={file.id} className="flex items-center justify-between p-3 rounded-md border border-border/50 bg-muted/30">
-                              <div className="flex items-center gap-3 truncate">
+                          {formData.files.map((file, i) => (
+                            <div key={file.id || i} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 gap-3 rounded-md border border-border/50 bg-muted/30">
+                              <div className="flex items-center gap-3 w-full sm:w-auto overflow-hidden">
                                 <FileText className="h-4 w-4 text-brand-warning shrink-0" />
-                                <span className="text-sm truncate">{file.url}</span>
+                                <span className="text-xs text-muted-foreground truncate max-w-[150px]">{file.url}</span>
                               </div>
-                              <Button size="icon" variant="ghost" className="h-8 w-8 cursor-pointer text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => {
-                                setFormData({ ...formData, files: formData.files.filter(f => f.id !== file.id) });
-                              }}>
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                              <div className="flex items-center gap-2 w-full sm:w-auto">
+                                <Input 
+                                  value={file.name} 
+                                  onChange={(e) => {
+                                    const newFiles = [...formData.files];
+                                    newFiles[i].name = e.target.value;
+                                    setFormData({ ...formData, files: newFiles });
+                                  }} 
+                                  className="h-8 text-xs bg-background flex-1 sm:w-48" 
+                                  placeholder="File Name / Note" 
+                                />
+                                <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0 cursor-pointer text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => {
+                                  setFormData({ ...formData, files: formData.files.filter(f => f.id !== file.id) });
+                                }}>
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
                             </div>
                           ))}
                         </div>

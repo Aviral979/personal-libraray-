@@ -155,7 +155,21 @@ export default function KnowledgeDetailPage({ params }: { params: Promise<{ slug
             </div>
           )}
 
-          {content.externalLink && (
+          {content.externalLinks && content.externalLinks.length > 0 ? (
+            <div className="mt-8 pt-6 border-t border-border/50">
+              <h3 className="font-heading text-xl font-semibold mb-4">External Resources</h3>
+              <div className="flex flex-wrap gap-3">
+                {content.externalLinks.map((ext: any) => (
+                  <a key={ext.id} href={ext.url} target="_blank" rel="noopener noreferrer" className="block">
+                    <Button className="gap-2 bg-brand-indigo hover:bg-brand-indigo/90 text-white shadow-sm">
+                      <ExternalLink className="h-4 w-4" />
+                      {ext.note || "Visit Resource"}
+                    </Button>
+                  </a>
+                ))}
+              </div>
+            </div>
+          ) : content.externalLink ? (
             <div className="mt-8 pt-6 border-t border-border/50">
               <a href={content.externalLink} target="_blank" rel="noopener noreferrer">
                 <Button className="gap-2 bg-brand-indigo hover:bg-brand-indigo/90 text-white shadow-sm">
@@ -164,7 +178,7 @@ export default function KnowledgeDetailPage({ params }: { params: Promise<{ slug
                 </Button>
               </a>
             </div>
-          )}
+          ) : null}
         </div>
 
         {/* ─── DESCRIPTION ───────────────────────────────── */}
@@ -182,14 +196,21 @@ export default function KnowledgeDetailPage({ params }: { params: Promise<{ slug
             <section>
               <h2 className="font-heading text-2xl font-semibold mb-6">Images & Screenshots</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {content.images.map((img: string, idx: number) => (
-                  <a key={idx} href={img} target="_blank" rel="noopener noreferrer" className="block">
-                    <div className="relative aspect-video rounded-xl overflow-hidden border border-border/50 shadow-sm group cursor-pointer">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={img} alt={`Image ${idx + 1}`} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                    </div>
-                  </a>
-                ))}
+                {content.images.map((img: any, idx: number) => {
+                  const url = typeof img === 'string' ? img : img.url;
+                  const note = typeof img === 'string' ? `Image ${idx + 1}` : (img.note || `Image ${idx + 1}`);
+                  return (
+                    <a key={idx} href={url} target="_blank" rel="noopener noreferrer" className="block">
+                      <div className="relative aspect-video rounded-xl overflow-hidden border border-border/50 shadow-sm group cursor-pointer bg-muted">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={url} alt={note} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                        <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white p-2 text-xs truncate opacity-0 group-hover:opacity-100 transition-opacity">
+                          {note}
+                        </div>
+                      </div>
+                    </a>
+                  );
+                })}
               </div>
             </section>
           )}
