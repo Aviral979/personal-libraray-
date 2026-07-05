@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { SessionProvider, useSession, signOut } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard,
@@ -147,16 +148,27 @@ function SidebarContent({
         <div className={`flex items-center ${collapsed ? "justify-center" : "justify-between"}`}>
           <ThemeToggle />
           {!collapsed && (
-            <Link href="/">
+            <div className="flex flex-col gap-2 w-full">
+              <Link href="/" className="w-full">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-start gap-2 text-sidebar-foreground/70 hover:text-sidebar-foreground cursor-pointer"
+                >
+                  <Library className="h-4 w-4" />
+                  Exit Admin
+                </Button>
+              </Link>
               <Button
                 variant="ghost"
                 size="sm"
-                className="gap-2 text-sidebar-foreground/70 hover:text-sidebar-foreground cursor-pointer"
+                onClick={() => signOut({ callbackUrl: "/admin/login" })}
+                className="w-full justify-start gap-2 text-red-500 hover:text-red-600 hover:bg-red-500/10 cursor-pointer"
               >
                 <LogOut className="h-4 w-4" />
-                Exit Admin
+                Sign Out
               </Button>
-            </Link>
+            </div>
           )}
         </div>
       </div>
@@ -169,8 +181,38 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
+  return (
+    <SessionProvider>
+      <AdminLayoutContent>{children}</AdminLayoutContent>
+    </SessionProvider>
+  );
+}
+
+function AdminLayoutContent({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
+  const { data: session, status } = useSession();
+
+  useEffect(() => {
+    if (status === "unauthenticated" && !pathname.includes("/admin/login") && !pathname.includes("/admin/signup")) {
+      router.push("/admin/login");
+    }
+  }, [status, pathname, router]);
+
+  if (status === "loading" || (status === "unauthenticated" && !pathname.includes("/admin/login") && !pathname.includes("/admin/signup"))) {
+    return <div className="min-h-screen bg-background flex items-center justify-center">Loading...</div>;
+  }
+
+  // Allow rendering just the children for login/signup pages without sidebar
+  if (pathname.includes("/admin/login") || pathname.includes("/admin/signup")) {
+    return <div className="min-h-screen bg-background">{children}</div>;
+  }
+
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       {/* Desktop sidebar */}

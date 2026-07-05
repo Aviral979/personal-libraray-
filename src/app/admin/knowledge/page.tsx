@@ -27,9 +27,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { useSession } from "next-auth/react";
 
 export default function KnowledgeAdminPage() {
   const router = useRouter();
+  const { data: session } = useSession();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
 
@@ -168,14 +170,22 @@ export default function KnowledgeAdminPage() {
                         <DropdownMenuItem className="cursor-pointer" onClick={() => window.open(`/knowledge/${item.slug}`, "_blank")}>
                           <Eye className="mr-2 h-4 w-4" /> View Live
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="cursor-pointer" onClick={() => router.push(`/admin/knowledge/create?edit=${item.id}`)}>
-                          <Pencil className="mr-2 h-4 w-4" /> Edit
-                        </DropdownMenuItem>
+                        
+                        {(item.authorId === session?.user?.id || session?.user?.role === "ADMIN" || session?.user?.role === "SUPER_ADMIN") && (
+                          <DropdownMenuItem className="cursor-pointer" onClick={() => router.push(`/admin/knowledge/create?edit=${item.id}`)}>
+                            <Pencil className="mr-2 h-4 w-4" /> Edit
+                          </DropdownMenuItem>
+                        )}
                       </DropdownMenuGroup>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem className="cursor-pointer text-destructive focus:text-destructive" onClick={() => handleDelete(item.id, item.title)}>
-                        <Trash2 className="mr-2 h-4 w-4" /> Move to Trash
-                      </DropdownMenuItem>
+                      
+                      {(item.authorId === session?.user?.id || session?.user?.role === "ADMIN" || session?.user?.role === "SUPER_ADMIN") && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="cursor-pointer text-destructive focus:text-destructive" onClick={() => handleDelete(item.id, item.title)}>
+                            <Trash2 className="mr-2 h-4 w-4" /> Move to Trash
+                          </DropdownMenuItem>
+                        </>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>

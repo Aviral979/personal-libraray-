@@ -181,6 +181,7 @@ export default function HomePage() {
                   thumbnail={item.coverImage || item.thumbnail}
                   category={item.category}
                   publishedAt={item.publishedAt}
+                  authorName={item.authorName}
                 />
               </div>
             ))}

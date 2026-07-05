@@ -177,12 +177,19 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="font-heading text-3xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground mt-1">
-            Welcome back. Here&apos;s your archive overview.
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 bg-primary/5 rounded-3xl p-6 md:p-8 border border-primary/10 relative overflow-hidden">
+        <div className="relative z-10">
+          <h1 className="font-heading text-3xl md:text-4xl font-bold">Dashboard</h1>
+          <p className="text-muted-foreground mt-2 max-w-md">
+            Welcome back to your Personal Library Admin. Here's a quick overview of your digital archive.
           </p>
+        </div>
+        <div className="hidden md:block absolute right-0 bottom-0 top-0 w-1/3 opacity-80 pointer-events-none">
+          <img 
+            src="/images/Admin Dashboard Illustration.png" 
+            alt="Dashboard Illustration" 
+            className="w-full h-full object-contain object-right-bottom mix-blend-multiply dark:mix-blend-lighten"
+          />
         </div>
         <Link href="/admin/knowledge/create">
           <Button className="gap-2 cursor-pointer" id="dashboard-create-btn">

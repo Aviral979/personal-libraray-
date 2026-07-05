@@ -1,5 +1,8 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
+import bcrypt from "bcryptjs";
+import { db } from "./firebase";
+import { collection, getDocs, query, where } from "firebase/firestore";
 
 export type UserRole = "SUPER_ADMIN" | "ADMIN" | "EDITOR" | "USER";
 
@@ -37,25 +40,38 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     Credentials({
       name: "credentials",
       credentials: {
-        id: { label: "Admin ID", type: "text" },
+        id: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        const id = credentials?.id as string | undefined;
+        const email = credentials?.id as string | undefined;
         const password = credentials?.password as string | undefined;
         
-        if (
-          id?.trim() === "bcp25398" &&
-          password?.trim() === "Aviral@2007"
-        ) {
-          return {
-            id: "admin-1",
-            email: "admin@personallibrary.com",
-            name: "Super Admin",
-            role: "SUPER_ADMIN" as UserRole,
-          };
-        }
+        if (!email || !password) return null;
 
+        try {
+          const q = query(collection(db, "users"), where("email", "==", email));
+          const querySnapshot = await getDocs(q);
+          
+          if (querySnapshot.empty) return null;
+          
+          const userDoc = querySnapshot.docs[0];
+          const userData = userDoc.data();
+          
+          const isValid = await bcrypt.compare(password, userData.password);
+          
+          if (isValid) {
+            return {
+              id: userDoc.id,
+              email: userData.email,
+              name: userData.name || "User",
+              role: (userData.role as UserRole) || "USER",
+            };
+          }
+        } catch (error) {
+          console.error("Auth error:", error);
+        }
+        
         return null;
       },
     }),

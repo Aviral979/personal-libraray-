@@ -23,9 +23,11 @@ import { toast } from "sonner";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import Tesseract from 'tesseract.js';
+import { useSession } from "next-auth/react";
 
 export default function CreateKnowledgePage() {
   const router = useRouter();
+  const { data: session } = useSession();
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
@@ -174,6 +176,19 @@ export default function CreateKnowledgePage() {
             
             if (docSnap.exists()) {
               const editItem = docSnap.data();
+
+              // Check if user is author or ADMIN/SUPER_ADMIN
+              if (
+                editItem.authorId && 
+                editItem.authorId !== session?.user?.id && 
+                session?.user?.role !== "SUPER_ADMIN" && 
+                session?.user?.role !== "ADMIN"
+              ) {
+                toast.error("You don't have permission to edit this item");
+                router.push("/admin/knowledge");
+                return;
+              }
+
               setFormData({
                 title: editItem.title || "",
                 subtitle: editItem.subtitle || "",
@@ -197,8 +212,10 @@ export default function CreateKnowledgePage() {
         }
       }
     };
-    fetchEditData();
-  }, []);
+    if (session?.user) {
+      fetchEditData();
+    }
+  }, [session, router]);
 
   const handleScanImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -292,7 +309,9 @@ export default function CreateKnowledgePage() {
           videos: formData.videos,
           files: formData.files,
           featured: false,
-          popular: false
+          popular: false,
+          authorId: session?.user?.id || "",
+          authorName: session?.user?.name || "Admin",
         });
         toast.success("Knowledge item created successfully in Firebase");
       }

@@ -25,6 +25,7 @@ export interface KnowledgeCardProps {
   featured?: boolean;
   popular?: boolean;
   contentImages?: string[];
+  authorName?: string;
 }
 
 export function KnowledgeCard({
@@ -38,6 +39,7 @@ export function KnowledgeCard({
   featured,
   popular,
   contentImages = [],
+  authorName,
 }: KnowledgeCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -107,13 +109,20 @@ export function KnowledgeCard({
 
         {/* Content */}
         <CardContent className="p-5 sm:p-6 flex flex-col flex-1">
-          {/* Date */}
-          {publishedAt && (
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-3">
-              <Calendar className="h-3.5 w-3.5" />
-              <span>{formatDistanceToNow(new Date(publishedAt), { addSuffix: true })}</span>
-            </div>
-          )}
+          {/* Date & Author */}
+          <div className="flex items-center justify-between gap-1.5 text-xs text-muted-foreground mb-3">
+            {publishedAt && (
+              <div className="flex items-center gap-1.5">
+                <Calendar className="h-3.5 w-3.5" />
+                <span>{formatDistanceToNow(new Date(publishedAt), { addSuffix: true })}</span>
+              </div>
+            )}
+            {authorName && (
+              <div className="flex items-center gap-1.5 text-primary/80 font-medium truncate max-w-[120px]">
+                By {authorName}
+              </div>
+            )}
+          </div>
 
           {/* Title */}
           <h3 className="font-heading font-bold text-lg sm:text-xl leading-snug line-clamp-2 mb-2 group-hover:text-primary transition-colors duration-300">
