@@ -25,6 +25,7 @@ import {
   ChevronRight,
   LogOut,
   Menu,
+  Mail,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -56,6 +57,7 @@ const sidebarItems = [
   {
     group: "System",
     items: [
+      { href: "/admin/messages", icon: Mail, label: "Inbox" },
       { href: "/admin/settings", icon: Settings, label: "Settings" },
       { href: "/admin/trash", icon: Trash2, label: "Trash" },
     ],
