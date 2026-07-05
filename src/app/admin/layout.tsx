@@ -205,7 +205,7 @@ function AdminLayoutContent({
   }, [status, pathname, router]);
 
   if (status === "loading" || (status === "unauthenticated" && !pathname.includes("/admin/login") && !pathname.includes("/admin/signup"))) {
-    return <div className="min-h-screen bg-background flex items-center justify-center">Loading...</div>;
+    return <div className="min-h-screen bg-background"></div>;
   }
 
   // Allow rendering just the children for login/signup pages without sidebar

@@ -177,26 +177,29 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 bg-primary/5 rounded-3xl p-6 md:p-8 border border-primary/10 relative overflow-hidden">
-        <div className="relative z-10">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 bg-primary/5 rounded-3xl p-6 md:p-8 border border-primary/10 relative overflow-hidden h-[200px]">
+        <div className="relative z-10 flex flex-col justify-center h-full">
           <h1 className="font-heading text-3xl md:text-4xl font-bold">Dashboard</h1>
           <p className="text-muted-foreground mt-2 max-w-md">
             Welcome back to your Personal Library Admin. Here's a quick overview of your digital archive.
           </p>
+          <div className="mt-6">
+            <Link href="/admin/knowledge/create">
+              <Button className="gap-2 cursor-pointer shadow-md" id="dashboard-create-btn">
+                <PlusCircle className="h-4 w-4" />
+                Create Knowledge
+              </Button>
+            </Link>
+          </div>
         </div>
-        <div className="hidden md:block absolute right-0 bottom-0 top-0 w-1/3 opacity-80 pointer-events-none">
+        <div className="hidden md:block absolute right-0 bottom-0 top-0 w-1/2 pointer-events-none">
           <img 
             src="/images/Admin Dashboard Illustration.png" 
             alt="Dashboard Illustration" 
-            className="w-full h-full object-contain object-right-bottom mix-blend-multiply dark:mix-blend-lighten"
+            className="w-full h-full object-cover object-left mask-image-linear-left dark:opacity-80"
+            style={{ WebkitMaskImage: "linear-gradient(to right, transparent, black 40%)" }}
           />
         </div>
-        <Link href="/admin/knowledge/create">
-          <Button className="gap-2 cursor-pointer" id="dashboard-create-btn">
-            <PlusCircle className="h-4 w-4" />
-            Create Knowledge
-          </Button>
-        </Link>
       </div>
 
       {loading ? (
