@@ -142,9 +142,9 @@ export default function KnowledgeDetailPage({ params }: { params: Promise<{ slug
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={
             content.thumbnail.includes('drive.google.com/file/d/') 
-              ? `https://drive.google.com/uc?export=view&id=${content.thumbnail.match(/\/d\/(.*?)\//)?.[1] || ''}`
+              ? `https://drive.google.com/thumbnail?id=${content.thumbnail.match(/\/d\/(.*?)\//)?.[1] || ''}&sz=w1200`
               : content.thumbnail.includes('drive.google.com/open?id=')
-              ? `https://drive.google.com/uc?export=view&id=${content.thumbnail.split('id=')[1]?.split('&')[0] || ''}`
+              ? `https://drive.google.com/thumbnail?id=${content.thumbnail.split('id=')[1]?.split('&')[0] || ''}&sz=w1200`
               : content.thumbnail
           } alt={content.title} className="object-cover w-full h-full" />
           <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
@@ -194,36 +194,41 @@ export default function KnowledgeDetailPage({ params }: { params: Promise<{ slug
             </div>
           )}
 
-          {content.externalLinks && content.externalLinks.length > 0 ? (
-            <div className="mt-8 pt-6 border-t border-border/50">
-              <h3 className="font-heading text-xl font-semibold mb-4">External Resources</h3>
-              <div className="flex flex-wrap gap-3">
-                {content.externalLinks.map((ext: any) => (
-                  <a key={ext.id} href={ext.url} target="_blank" rel="noopener noreferrer" className="block">
-                    <Button className="gap-2 bg-brand-indigo hover:bg-brand-indigo/90 text-white shadow-sm">
-                      <ExternalLink className="h-4 w-4" />
-                      {ext.note || "Visit Resource"}
-                    </Button>
-                  </a>
-                ))}
-              </div>
-            </div>
-          ) : content.externalLink ? (
-            <div className="mt-8 pt-6 border-t border-border/50">
-              <a href={content.externalLink} target="_blank" rel="noopener noreferrer">
-                <Button className="gap-2 bg-brand-indigo hover:bg-brand-indigo/90 text-white shadow-sm">
-                  <ExternalLink className="h-4 w-4" />
-                  Visit External Reference
-                </Button>
-              </a>
-            </div>
-          ) : null}
         </div>
 
         {/* ─── DESCRIPTION ───────────────────────────────── */}
         {content.shortDescription && (
           <div className="mb-12 px-2">
             <p className="text-lg leading-relaxed text-foreground/90">{content.shortDescription}</p>
+          </div>
+        )}
+
+        {/* ─── EXTERNAL LINKS SECTION ──────────────────────── */}
+        {(content.externalLinks?.length > 0 || content.externalLink) && (
+          <div className="mb-12 p-6 bg-primary/5 border border-primary/10 rounded-2xl">
+            <h2 className="font-heading text-2xl font-semibold mb-4 flex items-center gap-2">
+              <ExternalLink className="h-6 w-6 text-primary" />
+              External References & Links
+            </h2>
+            <div className="flex flex-wrap gap-3">
+              {content.externalLinks?.length > 0 ? (
+                content.externalLinks.map((ext: any) => (
+                  <a key={ext.id} href={ext.url} target="_blank" rel="noopener noreferrer" className="block">
+                    <Button className="gap-2 shadow-sm cursor-pointer hover:-translate-y-0.5 transition-transform">
+                      <ExternalLink className="h-4 w-4" />
+                      {ext.note || "Visit Resource"}
+                    </Button>
+                  </a>
+                ))
+              ) : (
+                <a href={content.externalLink} target="_blank" rel="noopener noreferrer" className="block">
+                  <Button className="gap-2 shadow-sm cursor-pointer hover:-translate-y-0.5 transition-transform">
+                    <ExternalLink className="h-4 w-4" />
+                    Visit External Reference
+                  </Button>
+                </a>
+              )}
+            </div>
           </div>
         )}
 
@@ -238,16 +243,16 @@ export default function KnowledgeDetailPage({ params }: { params: Promise<{ slug
                 {content.contentImages.map((img: any, idx: number) => {
                   let url = typeof img === 'string' ? img : img.url;
                   
-                  // Auto-convert Google Drive links to direct image URLs
+                  // Auto-convert Google Drive links to direct image URLs using thumbnail API
                   if (url.includes('drive.google.com/file/d/')) {
                     const match = url.match(/\/d\/(.*?)\//);
                     if (match && match[1]) {
-                      url = `https://drive.google.com/uc?export=view&id=${match[1]}`;
+                      url = `https://drive.google.com/thumbnail?id=${match[1]}&sz=w1200`;
                     }
                   } else if (url.includes('drive.google.com/open?id=')) {
                     const idMatch = url.split('id=')[1]?.split('&')[0];
                     if (idMatch) {
-                      url = `https://drive.google.com/uc?export=view&id=${idMatch}`;
+                      url = `https://drive.google.com/thumbnail?id=${idMatch}&sz=w1200`;
                     }
                   }
 
