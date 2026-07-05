@@ -620,12 +620,25 @@ export default function CreateKnowledgePage() {
                         return;
                       }
 
-                      const url = urlInput.trim();
+                      let url = urlInput.trim();
+                      // Pre-process Google redirect URLs (e.g. from Google Image search results)
+                      let wasGoogleImageSearch = false;
+                      const googleImgMatch = url.match(/[?&]imgurl=([^&]+)/);
+                      if (googleImgMatch && googleImgMatch[1]) {
+                        try {
+                          url = decodeURIComponent(googleImgMatch[1]);
+                          wasGoogleImageSearch = true;
+                        } catch (e) {
+                          console.error("Failed to decode google imgurl", e);
+                        }
+                      }
+
                       const note = urlNoteInput.trim() || `Media ${formData.contentImages.length + formData.videos.length + formData.files.length + 1}`;
                       
                       let type = urlMediaType;
                       if (type === "auto") {
-                        const isImageMatch = url.match(/\.(jpeg|jpg|gif|png|webp|svg|bmp|tiff|ico)(\?.*)?$/i) || url.includes('drive.google.com/file/d/') || url.includes('drive.google.com/open?id=') || url.includes('images.unsplash.com') || url.includes('i.imgur.com') || url.includes('pbs.twimg.com') || url.includes('instagram') || url.includes('pinimg.com');
+                        const isGoogleHostedImage = url.includes('googleusercontent.com') || url.includes('gstatic.com') || url.includes('google.com/imgres') || wasGoogleImageSearch;
+                        const isImageMatch = isGoogleHostedImage || url.match(/\.(jpeg|jpg|gif|png|webp|svg|bmp|tiff|ico)(\?.*)?$/i) || url.includes('drive.google.com/file/d/') || url.includes('drive.google.com/open?id=') || url.includes('images.unsplash.com') || url.includes('i.imgur.com') || url.includes('pbs.twimg.com') || url.includes('instagram') || url.includes('pinimg.com');
                         const isYouTubeMatch = url.includes("youtube.com") || url.includes("youtu.be");
                         const isVideoMatch = url.match(/\.(mp4|webm|ogg)(\?.*)?$/i) || isYouTubeMatch;
                         if (isImageMatch && !isYouTubeMatch) type = "image";
@@ -906,7 +919,18 @@ export default function CreateKnowledgePage() {
                   placeholder="https://example.com/thumbnail.jpg" 
                   className="h-9 text-sm" 
                   value={formData.thumbnailUrl}
-                  onChange={(e) => setFormData({ ...formData, thumbnailUrl: e.target.value })}
+                  onChange={(e) => {
+                    let val = e.target.value;
+                    const googleImgMatch = val.match(/[?&]imgurl=([^&]+)/);
+                    if (googleImgMatch && googleImgMatch[1]) {
+                      try {
+                        val = decodeURIComponent(googleImgMatch[1]);
+                      } catch (err) {
+                        console.error("Failed to decode google imgurl", err);
+                      }
+                    }
+                    setFormData({ ...formData, thumbnailUrl: val });
+                  }}
                 />
               </div>
             </CardContent>
