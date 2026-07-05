@@ -9,6 +9,27 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 
+// Helper: Convert any Google Drive link to a direct-renderable image URL
+function toDriveDirectUrl(url: string): string {
+  if (!url) return url;
+  // Format: https://drive.google.com/file/d/FILE_ID/view...
+  const fileMatch = url.match(/drive\.google\.com\/file\/d\/([^/]+)/);
+  if (fileMatch && fileMatch[1]) {
+    return `https://drive.google.com/thumbnail?id=${fileMatch[1]}&sz=w1200`;
+  }
+  // Format: https://drive.google.com/open?id=FILE_ID
+  const openMatch = url.match(/drive\.google\.com\/open\?id=([^&]+)/);
+  if (openMatch && openMatch[1]) {
+    return `https://drive.google.com/thumbnail?id=${openMatch[1]}&sz=w1200`;
+  }
+  // Format: https://drive.google.com/uc?id=FILE_ID
+  const ucMatch = url.match(/drive\.google\.com\/uc\?.*id=([^&]+)/);
+  if (ucMatch && ucMatch[1]) {
+    return `https://drive.google.com/thumbnail?id=${ucMatch[1]}&sz=w1200`;
+  }
+  return url;
+}
+
 // This is the detail page for displaying knowledge items
 export default function KnowledgeDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   // Next.js 16: params is a Promise, unwrap it with React.use()
@@ -86,10 +107,11 @@ export default function KnowledgeDetailPage({ params }: { params: Promise<{ slug
             category: docData.category || "Uncategorized",
             tags: combinedTags,
             thumbnail: docData.thumbnail || "",
-            images: docData.contentImages || [],
+            contentImages: docData.contentImages || [],
             videos: docData.videos || [],
             files: docData.files || [],
-            externalLink: docData.link || "",
+            externalLinks: docData.externalLinks || [],
+            externalLink: docData.link || docData.externalLink || "",
             views: views + 1
           });
 
@@ -140,13 +162,7 @@ export default function KnowledgeDetailPage({ params }: { params: Promise<{ slug
       {content.thumbnail && (
         <div className="relative w-full h-[40vh] min-h-[300px] max-h-[500px]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={
-            content.thumbnail.includes('drive.google.com/file/d/') 
-              ? `https://drive.google.com/thumbnail?id=${content.thumbnail.match(/\/d\/(.*?)\//)?.[1] || ''}&sz=w1200`
-              : content.thumbnail.includes('drive.google.com/open?id=')
-              ? `https://drive.google.com/thumbnail?id=${content.thumbnail.split('id=')[1]?.split('&')[0] || ''}&sz=w1200`
-              : content.thumbnail
-          } alt={content.title} className="object-cover w-full h-full" />
+          <img src={toDriveDirectUrl(content.thumbnail)} alt={content.title} className="object-cover w-full h-full" />
           <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
         </div>
       )}
@@ -198,14 +214,8 @@ export default function KnowledgeDetailPage({ params }: { params: Promise<{ slug
 
         {/* ─── DESCRIPTION ───────────────────────────────── */}
         {content.shortDescription && (
-          <div className="mb-12 px-2 space-y-4">
-            {content.shortDescription.split('\n').map((paragraph: string, index: number) => (
-              paragraph.trim() ? (
-                <p key={index} className="text-lg leading-relaxed text-foreground/90 font-sans">
-                  {paragraph}
-                </p>
-              ) : null
-            ))}
+          <div className="mb-12 px-2">
+            <div className="text-lg leading-relaxed text-foreground/90 whitespace-pre-wrap font-sans">{content.shortDescription}</div>
           </div>
         )}
 
@@ -247,24 +257,11 @@ export default function KnowledgeDetailPage({ params }: { params: Promise<{ slug
               <h2 className="font-heading text-2xl font-semibold mb-6">Images & Screenshots</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {content.contentImages.map((img: any, idx: number) => {
-                  let url = typeof img === 'string' ? img : img.url;
-                  
-                  // Auto-convert Google Drive links to direct image URLs using thumbnail API
-                  if (url.includes('drive.google.com/file/d/')) {
-                    const match = url.match(/\/d\/(.*?)\//);
-                    if (match && match[1]) {
-                      url = `https://drive.google.com/thumbnail?id=${match[1]}&sz=w1200`;
-                    }
-                  } else if (url.includes('drive.google.com/open?id=')) {
-                    const idMatch = url.split('id=')[1]?.split('&')[0];
-                    if (idMatch) {
-                      url = `https://drive.google.com/thumbnail?id=${idMatch}&sz=w1200`;
-                    }
-                  }
-
+                  const rawUrl = typeof img === 'string' ? img : img.url;
+                  const url = toDriveDirectUrl(rawUrl);
                   const note = typeof img === 'string' ? `Image ${idx + 1}` : (img.note || `Image ${idx + 1}`);
                   return (
-                    <a key={idx} href={url} target="_blank" rel="noopener noreferrer" className="block">
+                    <a key={idx} href={rawUrl} target="_blank" rel="noopener noreferrer" className="block">
                       <div className="relative aspect-video rounded-xl overflow-hidden border border-border/50 shadow-sm group cursor-pointer bg-muted">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={url} alt={note} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />

@@ -7,6 +7,18 @@ import { Calendar, Folder } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
+// Helper: Convert any Google Drive link to a direct-renderable image URL
+function toDriveDirectUrl(url: string): string {
+  if (!url) return url;
+  const fileMatch = url.match(/drive\.google\.com\/file\/d\/([^/]+)/);
+  if (fileMatch && fileMatch[1]) return `https://drive.google.com/thumbnail?id=${fileMatch[1]}&sz=w600`;
+  const openMatch = url.match(/drive\.google\.com\/open\?id=([^&]+)/);
+  if (openMatch && openMatch[1]) return `https://drive.google.com/thumbnail?id=${openMatch[1]}&sz=w600`;
+  const ucMatch = url.match(/drive\.google\.com\/uc\?.*id=([^&]+)/);
+  if (ucMatch && ucMatch[1]) return `https://drive.google.com/thumbnail?id=${ucMatch[1]}&sz=w600`;
+  return url;
+}
+
 export interface KnowledgeCardProps {
   id: string;
   slug: string;
@@ -56,9 +68,10 @@ export function KnowledgeCard({
     return () => clearInterval(interval);
   }, [isHovered, contentImages.length]);
 
-  const displayImage = (isHovered && contentImages.length > 0) 
+  const rawDisplayImage = (isHovered && contentImages.length > 0) 
     ? contentImages[currentImageIndex] 
     : (thumbnail || "/images/Default thumbnail placeholder (when admin doesn't upload one).png");
+  const displayImage = toDriveDirectUrl(rawDisplayImage);
 
   // Use document ID for routing so detail page can always find it
   const linkHref = `/knowledge/${id}`;

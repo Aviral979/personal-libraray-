@@ -25,6 +25,18 @@ import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle, Dialog
 import Tesseract from 'tesseract.js';
 import { useSession } from "next-auth/react";
 
+// Helper: Convert any Google Drive link to a direct-renderable image URL
+function toDriveDirectUrl(url: string): string {
+  if (!url) return url;
+  const fileMatch = url.match(/drive\.google\.com\/file\/d\/([^/]+)/);
+  if (fileMatch && fileMatch[1]) return `https://drive.google.com/thumbnail?id=${fileMatch[1]}&sz=w600`;
+  const openMatch = url.match(/drive\.google\.com\/open\?id=([^&]+)/);
+  if (openMatch && openMatch[1]) return `https://drive.google.com/thumbnail?id=${openMatch[1]}&sz=w600`;
+  const ucMatch = url.match(/drive\.google\.com\/uc\?.*id=([^&]+)/);
+  if (ucMatch && ucMatch[1]) return `https://drive.google.com/thumbnail?id=${ucMatch[1]}&sz=w600`;
+  return url;
+}
+
 export default function CreateKnowledgePage() {
   const router = useRouter();
   const { data: session } = useSession();
@@ -669,13 +681,7 @@ export default function CreateKnowledgePage() {
                             <div key={img.id || i} className="flex flex-col gap-2">
                               <div className="relative group aspect-square rounded-lg border border-border/50 overflow-hidden bg-muted">
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img src={
-                                  img.url.includes('drive.google.com/file/d/') 
-                                    ? `https://drive.google.com/thumbnail?id=${img.url.match(/\/d\/(.*?)\//)?.[1] || ''}&sz=w600`
-                                    : img.url.includes('drive.google.com/open?id=')
-                                    ? `https://drive.google.com/thumbnail?id=${img.url.split('id=')[1]?.split('&')[0] || ''}&sz=w600`
-                                    : img.url
-                                } alt={`Preview ${i}`} className="w-full h-full object-cover" onError={(e) => { e.currentTarget.src = "/images/Default thumbnail placeholder (when admin doesn't upload one).png" }} />
+                                <img src={toDriveDirectUrl(img.url)} alt={`Preview ${i}`} className="w-full h-full object-cover" onError={(e) => { e.currentTarget.src = "/images/Default thumbnail placeholder (when admin doesn't upload one).png" }} />
                                 <div className="absolute inset-0 bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                   <Button size="icon" variant="destructive" className="h-8 w-8 cursor-pointer shadow-md" onClick={() => {
                                     const newImages = [...formData.contentImages];
