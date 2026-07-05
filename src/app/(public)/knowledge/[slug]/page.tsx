@@ -140,7 +140,13 @@ export default function KnowledgeDetailPage({ params }: { params: Promise<{ slug
       {content.thumbnail && (
         <div className="relative w-full h-[40vh] min-h-[300px] max-h-[500px]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={content.thumbnail} alt={content.title} className="object-cover w-full h-full" />
+          <img src={
+            content.thumbnail.includes('drive.google.com/file/d/') 
+              ? `https://drive.google.com/uc?export=view&id=${content.thumbnail.match(/\/d\/(.*?)\//)?.[1] || ''}`
+              : content.thumbnail.includes('drive.google.com/open?id=')
+              ? `https://drive.google.com/uc?export=view&id=${content.thumbnail.split('id=')[1]?.split('&')[0] || ''}`
+              : content.thumbnail
+          } alt={content.title} className="object-cover w-full h-full" />
           <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
         </div>
       )}
@@ -225,12 +231,26 @@ export default function KnowledgeDetailPage({ params }: { params: Promise<{ slug
         <div className="space-y-12">
           
           {/* Images */}
-          {content.images.length > 0 && (
+          {content.contentImages && content.contentImages.length > 0 && (
             <section>
               <h2 className="font-heading text-2xl font-semibold mb-6">Images & Screenshots</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {content.images.map((img: any, idx: number) => {
-                  const url = typeof img === 'string' ? img : img.url;
+                {content.contentImages.map((img: any, idx: number) => {
+                  let url = typeof img === 'string' ? img : img.url;
+                  
+                  // Auto-convert Google Drive links to direct image URLs
+                  if (url.includes('drive.google.com/file/d/')) {
+                    const match = url.match(/\/d\/(.*?)\//);
+                    if (match && match[1]) {
+                      url = `https://drive.google.com/uc?export=view&id=${match[1]}`;
+                    }
+                  } else if (url.includes('drive.google.com/open?id=')) {
+                    const idMatch = url.split('id=')[1]?.split('&')[0];
+                    if (idMatch) {
+                      url = `https://drive.google.com/uc?export=view&id=${idMatch}`;
+                    }
+                  }
+
                   const note = typeof img === 'string' ? `Image ${idx + 1}` : (img.note || `Image ${idx + 1}`);
                   return (
                     <a key={idx} href={url} target="_blank" rel="noopener noreferrer" className="block">
@@ -249,7 +269,7 @@ export default function KnowledgeDetailPage({ params }: { params: Promise<{ slug
           )}
 
           {/* Videos */}
-          {content.videos.length > 0 && (
+          {content.videos && content.videos.length > 0 && (
             <section>
               <h2 className="font-heading text-2xl font-semibold mb-6">Video Recordings</h2>
               <div className="grid grid-cols-1 gap-4">
@@ -286,7 +306,7 @@ export default function KnowledgeDetailPage({ params }: { params: Promise<{ slug
           )}
 
           {/* Files */}
-          {content.files.length > 0 && (
+          {content.files && content.files.length > 0 && (
             <section>
               <Separator className="mb-8" />
               <h2 className="font-heading text-2xl font-semibold mb-6">Attached Files & Documents</h2>

@@ -596,7 +596,7 @@ export default function CreateKnowledgePage() {
                       const url = urlInput.trim();
                       const note = urlNoteInput.trim() || `Media ${formData.contentImages.length + formData.videos.length + formData.files.length + 1}`;
                       
-                      const isImage = url.match(/\.(jpeg|jpg|gif|png|webp)$/i);
+                      const isImage = url.match(/\.(jpeg|jpg|gif|png|webp)$/i) || url.includes('drive.google.com/file/d/') || url.includes('drive.google.com/open?id=');
                       const isYouTube = url.includes("youtube.com") || url.includes("youtu.be");
                       const isVideo = url.match(/\.(mp4|webm|ogg)$/i) || isYouTube || url.includes("video");
 
