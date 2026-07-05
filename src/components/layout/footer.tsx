@@ -94,7 +94,7 @@ export function Footer() {
 
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
           <p>
-            © {currentYear} Personal Library. All rights reserved.
+            <Link href="/moderator" className="cursor-default opacity-50 hover:opacity-100 transition-opacity">©</Link> {currentYear} Personal Library. All rights reserved.
           </p>
           <p className="flex items-center gap-1">
             Built with <Heart className="h-3.5 w-3.5 text-red-500 fill-red-500" /> by Personal Library

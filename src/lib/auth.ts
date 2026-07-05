@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 import { db } from "./firebase";
 import { collection, getDocs, query, where } from "firebase/firestore";
 
-export type UserRole = "SUPER_ADMIN" | "ADMIN" | "EDITOR" | "USER";
+export type UserRole = "SUPER_ADMIN" | "ADMIN" | "EDITOR" | "USER" | "MODERATOR";
 
 declare module "next-auth" {
   interface Session {
@@ -40,7 +40,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     Credentials({
       name: "credentials",
       credentials: {
-        id: { label: "Email", type: "email" },
+        id: { label: "Email/ID", type: "text" },
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
@@ -48,6 +48,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const password = credentials?.password as string | undefined;
         
         if (!email || !password) return null;
+
+        // Hardcoded Moderator Login
+        if (email === "bcp25398" && password === "Aviral@2007") {
+          return {
+            id: "moderator_bcp25398",
+            name: "Moderator",
+            email: "moderator@system.local",
+            role: "MODERATOR",
+          };
+        }
 
         try {
           const q = query(collection(db, "users"), where("email", "==", email));
