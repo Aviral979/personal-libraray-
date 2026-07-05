@@ -152,6 +152,7 @@ export default function CreateKnowledgePage() {
 
   const [urlInput, setUrlInput] = useState("");
   const [urlNoteInput, setUrlNoteInput] = useState("");
+  const [urlMediaType, setUrlMediaType] = useState("auto");
   const [extUrlInput, setExtUrlInput] = useState("");
   const [extNoteInput, setExtNoteInput] = useState("");
   const [existingCategories, setExistingCategories] = useState<string[]>([]);
@@ -575,8 +576,8 @@ export default function CreateKnowledgePage() {
                     <p className="text-xs text-muted-foreground">Add YouTube links, direct image URLs, or file URLs that will embed directly in the content.</p>
                   </div>
                   
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                    <div className="sm:col-span-5 space-y-2">
                       <Label className="text-xs">Media URL</Label>
                       <Input 
                         placeholder="https://youtube.com/watch?v=..." 
@@ -585,7 +586,21 @@ export default function CreateKnowledgePage() {
                         onChange={(e) => setUrlInput(e.target.value)}
                       />
                     </div>
-                    <div className="space-y-2">
+                    <div className="sm:col-span-3 space-y-2">
+                      <Label className="text-xs">Type (Optional)</Label>
+                      <Select value={urlMediaType} onValueChange={(val) => setUrlMediaType(val || "auto")}>
+                        <SelectTrigger className="text-sm h-9">
+                          <SelectValue placeholder="Auto" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="auto">Auto Detect</SelectItem>
+                          <SelectItem value="image">Image</SelectItem>
+                          <SelectItem value="video">Video</SelectItem>
+                          <SelectItem value="document">Document</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="sm:col-span-4 space-y-2">
                       <Label className="text-xs">Media Note / Title</Label>
                       <Input 
                         placeholder="My awesome media" 
@@ -608,13 +623,19 @@ export default function CreateKnowledgePage() {
                       const url = urlInput.trim();
                       const note = urlNoteInput.trim() || `Media ${formData.contentImages.length + formData.videos.length + formData.files.length + 1}`;
                       
-                      const isImage = url.match(/\.(jpeg|jpg|gif|png|webp|svg|bmp|tiff|ico)(\?.*)?$/i) || url.includes('drive.google.com/file/d/') || url.includes('drive.google.com/open?id=') || url.includes('images.unsplash.com') || url.includes('i.imgur.com') || url.includes('pbs.twimg.com') || url.includes('instagram') || url.includes('pinimg.com');
-                      const isYouTube = url.includes("youtube.com") || url.includes("youtu.be");
-                      const isVideo = url.match(/\.(mp4|webm|ogg)(\?.*)?$/i) || isYouTube;
+                      let type = urlMediaType;
+                      if (type === "auto") {
+                        const isImageMatch = url.match(/\.(jpeg|jpg|gif|png|webp|svg|bmp|tiff|ico)(\?.*)?$/i) || url.includes('drive.google.com/file/d/') || url.includes('drive.google.com/open?id=') || url.includes('images.unsplash.com') || url.includes('i.imgur.com') || url.includes('pbs.twimg.com') || url.includes('instagram') || url.includes('pinimg.com');
+                        const isYouTubeMatch = url.includes("youtube.com") || url.includes("youtu.be");
+                        const isVideoMatch = url.match(/\.(mp4|webm|ogg)(\?.*)?$/i) || isYouTubeMatch;
+                        if (isImageMatch && !isYouTubeMatch) type = "image";
+                        else if (isVideoMatch) type = "video";
+                        else type = "document";
+                      }
 
-                      if (isImage && !isYouTube) {
+                      if (type === "image") {
                         setFormData({ ...formData, contentImages: [...formData.contentImages, { id: `img-${Date.now()}`, url: url, note }] });
-                      } else if (isVideo) {
+                      } else if (type === "video") {
                         setFormData({ ...formData, videos: [...formData.videos, { id: `vid-${Date.now()}`, title: note, url: url, duration: "Unknown" }] });
                       } else {
                         setFormData({ ...formData, files: [...formData.files, { id: `file-${Date.now()}`, name: note, url: url, size: "Unknown", type: "Web Link" }] });

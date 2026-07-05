@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, useEffect, use } from "react";
-import { ArrowLeft, Calendar, Folder, FileText, Download, PlayCircle, ExternalLink, Loader2 } from "lucide-react";
+import { ArrowLeft, Calendar, Folder, FileText, Download, PlayCircle, ExternalLink, Loader2, Link as LinkIcon } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs, doc, getDoc, updateDoc, increment } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
@@ -82,7 +82,12 @@ export default function KnowledgeDetailPage({ params }: { params: Promise<{ slug
         }
         
         if (docData) {
-          // Auto Tags Generation
+          // Check for TRASH status
+          if (docData.status === "TRASH") {
+            docData = null;
+            docRefToUpdate = null;
+          } else {
+            // Auto Tags Generation
           let autoTags = [];
           const views = docData.views || 0;
           if (views > 50) autoTags.push("🔥 Most Viewed");
@@ -125,6 +130,7 @@ export default function KnowledgeDetailPage({ params }: { params: Promise<{ slug
               console.error("Failed to update views", updateErr);
             }
           }
+          }
         }
       } catch (error) {
         console.error("Error fetching detail from Firebase:", error);
@@ -162,7 +168,7 @@ export default function KnowledgeDetailPage({ params }: { params: Promise<{ slug
       {content.thumbnail && (
         <div className="relative w-full h-[40vh] min-h-[300px] max-h-[500px]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={toDriveDirectUrl(content.thumbnail)} alt={content.title} className="object-cover w-full h-full" />
+          <img src={toDriveDirectUrl(content.thumbnail)} alt={content.title} loading="lazy" className="object-cover w-full h-full" />
           <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
         </div>
       )}
@@ -207,34 +213,45 @@ export default function KnowledgeDetailPage({ params }: { params: Promise<{ slug
 
         {/* ─── DESCRIPTION ───────────────────────────────── */}
         {content.shortDescription && (
-          <div className="mb-12 px-2">
-            <div className="text-lg leading-relaxed text-foreground/90 whitespace-pre-wrap font-sans">{content.shortDescription}</div>
+          <div className="mb-14 px-5 sm:px-8 py-8 bg-card rounded-2xl shadow-sm border border-border/40 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-primary/80 to-primary/20"></div>
+            <div className="text-lg leading-[1.8] text-foreground/80 whitespace-pre-wrap font-sans tracking-wide first-letter:text-6xl first-letter:font-bold first-letter:text-primary first-letter:mr-2 first-letter:mt-1 first-letter:float-left first-line:tracking-widest">
+              {content.shortDescription}
+            </div>
           </div>
         )}
 
         {/* ─── EXTERNAL LINKS SECTION ──────────────────────── */}
         {(content.externalLinks?.length > 0 || content.externalLink) && (
-          <div className="mb-12 p-6 bg-primary/5 border border-primary/10 rounded-2xl">
-            <h2 className="font-heading text-2xl font-semibold mb-4 flex items-center gap-2">
-              <ExternalLink className="h-6 w-6 text-primary" />
-              External References & Links
+          <div className="mb-14">
+            <h2 className="font-heading text-2xl font-bold mb-6 flex items-center gap-3">
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <ExternalLink className="h-5 w-5 text-primary" />
+              </div>
+              References & Links
             </h2>
-            <div className="flex flex-wrap gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {content.externalLinks?.length > 0 ? (
                 content.externalLinks.map((ext: any) => (
-                  <a key={ext.id} href={ext.url} target="_blank" rel="noopener noreferrer" className="block">
-                    <Button className="gap-2 shadow-sm cursor-pointer hover:-translate-y-0.5 transition-transform">
-                      <ExternalLink className="h-4 w-4" />
-                      {ext.note || "Visit Resource"}
-                    </Button>
+                  <a key={ext.id} href={ext.url} target="_blank" rel="noopener noreferrer" className="group flex items-start gap-4 p-4 rounded-xl border border-border bg-card hover:border-primary/40 hover:shadow-md transition-all">
+                    <div className="mt-0.5 shrink-0 h-10 w-10 rounded-full bg-primary/5 flex items-center justify-center group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                      <LinkIcon className="h-4 w-4" />
+                    </div>
+                    <div className="overflow-hidden">
+                      <p className="font-medium text-base mb-1 truncate text-foreground group-hover:text-primary transition-colors">{ext.note || "Visit Resource"}</p>
+                      <p className="text-xs text-muted-foreground truncate">{ext.url}</p>
+                    </div>
                   </a>
                 ))
               ) : (
-                <a href={content.externalLink} target="_blank" rel="noopener noreferrer" className="block">
-                  <Button className="gap-2 shadow-sm cursor-pointer hover:-translate-y-0.5 transition-transform">
-                    <ExternalLink className="h-4 w-4" />
-                    Visit External Reference
-                  </Button>
+                <a href={content.externalLink} target="_blank" rel="noopener noreferrer" className="group flex items-start gap-4 p-4 rounded-xl border border-border bg-card hover:border-primary/40 hover:shadow-md transition-all">
+                  <div className="mt-0.5 shrink-0 h-10 w-10 rounded-full bg-primary/5 flex items-center justify-center group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                    <LinkIcon className="h-4 w-4" />
+                  </div>
+                  <div className="overflow-hidden">
+                    <p className="font-medium text-base mb-1 truncate text-foreground group-hover:text-primary transition-colors">Visit External Reference</p>
+                    <p className="text-xs text-muted-foreground truncate">{content.externalLink}</p>
+                  </div>
                 </a>
               )}
             </div>
@@ -257,7 +274,7 @@ export default function KnowledgeDetailPage({ params }: { params: Promise<{ slug
                     <a key={idx} href={rawUrl} target="_blank" rel="noopener noreferrer" className="block">
                       <div className="rounded-xl overflow-hidden border border-border/50 shadow-sm group cursor-pointer bg-muted">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={url} alt={note} className="w-full h-auto object-contain transition-transform duration-500 group-hover:scale-105" />
+                        <img src={url} alt={note} loading="lazy" className="w-full h-auto object-contain transition-transform duration-500 group-hover:scale-105" />
                         <div className="bg-card/80 text-foreground p-2 text-xs truncate">
                           {note}
                         </div>
