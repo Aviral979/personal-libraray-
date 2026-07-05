@@ -199,7 +199,7 @@ export default function KnowledgeDetailPage({ params }: { params: Promise<{ slug
         {/* ─── DESCRIPTION ───────────────────────────────── */}
         {content.shortDescription && (
           <div className="mb-12 px-2">
-            <p className="text-lg leading-relaxed text-foreground/90">{content.shortDescription}</p>
+            <div className="text-lg leading-relaxed text-foreground/90 whitespace-pre-wrap font-sans">{content.shortDescription}</div>
           </div>
         )}
 

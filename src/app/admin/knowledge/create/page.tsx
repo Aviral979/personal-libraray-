@@ -669,7 +669,13 @@ export default function CreateKnowledgePage() {
                             <div key={img.id || i} className="flex flex-col gap-2">
                               <div className="relative group aspect-square rounded-lg border border-border/50 overflow-hidden bg-muted">
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img src={img.url} alt={`Preview ${i}`} className="w-full h-full object-cover" onError={(e) => { e.currentTarget.src = "/images/Default thumbnail placeholder (when admin doesn't upload one).png" }} />
+                                <img src={
+                                  img.url.includes('drive.google.com/file/d/') 
+                                    ? `https://drive.google.com/thumbnail?id=${img.url.match(/\/d\/(.*?)\//)?.[1] || ''}&sz=w600`
+                                    : img.url.includes('drive.google.com/open?id=')
+                                    ? `https://drive.google.com/thumbnail?id=${img.url.split('id=')[1]?.split('&')[0] || ''}&sz=w600`
+                                    : img.url
+                                } alt={`Preview ${i}`} className="w-full h-full object-cover" onError={(e) => { e.currentTarget.src = "/images/Default thumbnail placeholder (when admin doesn't upload one).png" }} />
                                 <div className="absolute inset-0 bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                   <Button size="icon" variant="destructive" className="h-8 w-8 cursor-pointer shadow-md" onClick={() => {
                                     const newImages = [...formData.contentImages];
