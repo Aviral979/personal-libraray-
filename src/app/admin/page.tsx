@@ -22,6 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { db } from "@/lib/firebase";
 import { collection, getDocs } from "firebase/firestore";
+import { useSession } from "next-auth/react";
 
 const quickActions = [
   {
@@ -57,6 +58,7 @@ const quickActions = [
 ];
 
 export default function AdminDashboard() {
+  const { data: session } = useSession();
   const [statsData, setStatsData] = useState({
     totalKnowledge: 0,
     published: 0,
@@ -84,6 +86,12 @@ export default function AdminDashboard() {
 
         querySnapshot.forEach((doc) => {
           const data = doc.data();
+          
+          // Filter by author if not SUPER_ADMIN
+          if (session?.user?.role !== "SUPER_ADMIN" && data.authorId !== session?.user?.id) {
+            return;
+          }
+
           if (data.deletedAt) {
             trash++;
           } else {
@@ -120,8 +128,10 @@ export default function AdminDashboard() {
         setLoading(false);
       }
     };
-    fetchDashboardData();
-  }, []);
+    if (session?.user) {
+      fetchDashboardData();
+    }
+  }, [session]);
 
   const stats = [
     {

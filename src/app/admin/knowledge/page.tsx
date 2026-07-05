@@ -44,6 +44,12 @@ export default function KnowledgeAdminPage() {
         const querySnapshot = await getDocs(q);
         const fetchedItems = querySnapshot.docs
           .filter(doc => !doc.data().deletedAt)
+          .filter(doc => {
+            const data = doc.data();
+            // Allow SUPER_ADMIN to see all, otherwise only author sees their own
+            if (session?.user?.role === "SUPER_ADMIN") return true;
+            return data.authorId === session?.user?.id;
+          })
           .map(doc => {
             const data = doc.data();
             let dateStr = new Date().toLocaleDateString();
