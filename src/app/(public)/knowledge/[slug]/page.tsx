@@ -167,14 +167,7 @@ export default function KnowledgeDetailPage({ params }: { params: Promise<{ slug
         </div>
       )}
 
-      {/* Back Button */}
-      <div className={`${content.thumbnail ? 'absolute top-6 left-6 z-10' : 'max-w-4xl mx-auto px-4 pt-6'}`}>
-        <Link href="/">
-          <Button variant="secondary" size="icon" className="rounded-full shadow-lg bg-background/80 backdrop-blur-md hover:bg-background">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-        </Link>
-      </div>
+
 
       <div className={`max-w-4xl mx-auto px-4 sm:px-6 ${content.thumbnail ? '-mt-20 relative z-10' : 'mt-4'}`}>
         {/* ─── HEADER CONTENT ───────────────────────────────── */}
@@ -262,10 +255,10 @@ export default function KnowledgeDetailPage({ params }: { params: Promise<{ slug
                   const note = typeof img === 'string' ? `Image ${idx + 1}` : (img.note || `Image ${idx + 1}`);
                   return (
                     <a key={idx} href={rawUrl} target="_blank" rel="noopener noreferrer" className="block">
-                      <div className="relative aspect-video rounded-xl overflow-hidden border border-border/50 shadow-sm group cursor-pointer bg-muted">
+                      <div className="rounded-xl overflow-hidden border border-border/50 shadow-sm group cursor-pointer bg-muted">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={url} alt={note} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                        <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white p-2 text-xs truncate opacity-0 group-hover:opacity-100 transition-opacity">
+                        <img src={url} alt={note} className="w-full h-auto object-contain transition-transform duration-500 group-hover:scale-105" />
+                        <div className="bg-card/80 text-foreground p-2 text-xs truncate">
                           {note}
                         </div>
                       </div>

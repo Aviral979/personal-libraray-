@@ -608,9 +608,9 @@ export default function CreateKnowledgePage() {
                       const url = urlInput.trim();
                       const note = urlNoteInput.trim() || `Media ${formData.contentImages.length + formData.videos.length + formData.files.length + 1}`;
                       
-                      const isImage = url.match(/\.(jpeg|jpg|gif|png|webp)$/i) || url.includes('drive.google.com/file/d/') || url.includes('drive.google.com/open?id=');
+                      const isImage = url.match(/\.(jpeg|jpg|gif|png|webp|svg|bmp|tiff|ico)(\?.*)?$/i) || url.includes('drive.google.com/file/d/') || url.includes('drive.google.com/open?id=') || url.includes('images.unsplash.com') || url.includes('i.imgur.com') || url.includes('pbs.twimg.com') || url.includes('instagram') || url.includes('pinimg.com');
                       const isYouTube = url.includes("youtube.com") || url.includes("youtu.be");
-                      const isVideo = url.match(/\.(mp4|webm|ogg)$/i) || isYouTube || url.includes("video");
+                      const isVideo = url.match(/\.(mp4|webm|ogg)(\?.*)?$/i) || isYouTube;
 
                       if (isImage && !isYouTube) {
                         setFormData({ ...formData, contentImages: [...formData.contentImages, { id: `img-${Date.now()}`, url: url, note }] });
@@ -853,7 +853,7 @@ export default function CreateKnowledgePage() {
                 <div className="relative aspect-video rounded-lg overflow-hidden border border-border/50 bg-muted">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img 
-                    src={formData.thumbnailUrl} 
+                    src={toDriveDirectUrl(formData.thumbnailUrl)} 
                     alt="Thumbnail preview" 
                     className="w-full h-full object-cover" 
                     onError={(e) => { e.currentTarget.src = '/images/Default thumbnail placeholder (when admin doesn\'t upload one).png' }}
