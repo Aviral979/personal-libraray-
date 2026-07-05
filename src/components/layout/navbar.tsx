@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -11,11 +11,13 @@ import {
   X,
   Library,
   LogIn,
+  ChevronLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 
 const navLinks = [
+  { href: "/", label: "Home" },
   { href: "/categories", label: "Categories" },
   { href: "/collections", label: "Collections" },
   { href: "/latest", label: "Latest" },
@@ -26,6 +28,7 @@ const navLinks = [
 
 export function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -51,12 +54,24 @@ export function Navbar() {
         }`}
       >
         <nav className="content-width flex items-center justify-between h-16">
-          {/* Logo */}
-          <Link
-            href="/"
-            className="flex items-center gap-2.5 group"
-            id="nav-logo"
-          >
+          {/* Logo & Back Button */}
+          <div className="flex items-center">
+            {pathname !== "/" && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => router.back()}
+                className="mr-2 h-9 w-9 text-muted-foreground hover:text-foreground hidden sm:flex"
+                title="Go Back"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </Button>
+            )}
+            <Link
+              href="/"
+              className="flex items-center gap-2.5 group"
+              id="nav-logo"
+            >
             <div className="relative flex items-center justify-center w-10 h-10 overflow-hidden transition-transform group-hover:scale-105">
               <Image src="/images/logo.png" alt="Personal Library Logo" fill className="object-contain" />
             </div>
@@ -64,6 +79,7 @@ export function Navbar() {
               Personal Library
             </span>
           </Link>
+          </div>
 
           {/* Desktop Nav */}
           <div className="hidden lg:flex items-center gap-1">
@@ -95,21 +111,19 @@ export function Navbar() {
 
           {/* Right actions */}
           <div className="flex items-center gap-2">
-            <Link href="/search">
+            <Link href="/admin">
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-9 w-9 cursor-pointer"
-                id="nav-search"
+                className="h-9 w-9 cursor-pointer text-brand-indigo hover:text-brand-indigo hover:bg-brand-indigo/10 transition-colors"
+                title="Administration"
               >
-                <Search className="h-4 w-4" />
-                <span className="sr-only">Search</span>
+                <Library className="h-5 w-5" />
+                <span className="sr-only">Admin</span>
               </Button>
             </Link>
 
             <ThemeToggle />
-
-
 
             {/* Mobile menu toggle */}
             <Button

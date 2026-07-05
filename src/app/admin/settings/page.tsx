@@ -122,7 +122,7 @@ export default function SettingsAdminPage() {
                     name="siteName"
                     value={formData.siteName}
                     onChange={handleChange}
-                    placeholder="E.g., My Knowledge Archive"
+                    placeholder="E.g., My Personal Library"
                     className="focus-visible:ring-brand-indigo"
                   />
                 </div>

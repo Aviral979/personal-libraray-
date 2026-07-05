@@ -29,7 +29,6 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
-import { signOut } from "next-auth/react";
 
 const sidebarItems = [
   {
@@ -148,15 +147,16 @@ function SidebarContent({
         <div className={`flex items-center ${collapsed ? "justify-center" : "justify-between"}`}>
           <ThemeToggle />
           {!collapsed && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="gap-2 text-sidebar-foreground/70 hover:text-sidebar-foreground cursor-pointer"
-              onClick={() => signOut({ callbackUrl: "/" })}
-            >
-              <LogOut className="h-4 w-4" />
-              Logout
-            </Button>
+            <Link href="/">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-2 text-sidebar-foreground/70 hover:text-sidebar-foreground cursor-pointer"
+              >
+                <LogOut className="h-4 w-4" />
+                Exit Admin
+              </Button>
+            </Link>
           )}
         </div>
       </div>
@@ -171,12 +171,6 @@ export default function AdminLayout({
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
-
-  // Don't show admin layout on login page
-  if (pathname === "/admin/login") {
-    return <>{children}</>;
-  }
-
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       {/* Desktop sidebar */}

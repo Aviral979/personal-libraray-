@@ -52,7 +52,7 @@ export const metadata: Metadata = {
         url: "/images/OG image (social share preview).png",
         width: 1200,
         height: 630,
-        alt: "Knowledge Archive",
+        alt: "Personal Library",
       },
     ],
   },

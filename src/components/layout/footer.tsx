@@ -9,8 +9,6 @@ const footerLinks = {
     { href: "/collections", label: "Collections" },
     { href: "/latest", label: "Latest" },
     { href: "/popular", label: "Popular" },
-    { href: "/search", label: "Search" },
-    { href: "/admin/login", label: "Admin Panel" },
   ],
   pages: [
     { href: "/about", label: "About" },
@@ -61,7 +59,7 @@ export function Footer() {
                 <AtSign className="h-5 w-5" />
               </Link>
               <Link
-                href="mailto:hello@knowledgearchive.com"
+                href="mailto:hello@personallibrary.com"
                 className="text-muted-foreground hover:text-foreground transition-colors"
               >
                 <Mail className="h-5 w-5" />
