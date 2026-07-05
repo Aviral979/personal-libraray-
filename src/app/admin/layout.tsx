@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { SessionProvider, useSession, signOut } from "next-auth/react";
@@ -82,8 +83,8 @@ function SidebarContent({
               exit={{ opacity: 0 }}
               className="flex items-center gap-2.5"
             >
-              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                <BookOpen className="h-4 w-4" />
+              <div className="relative flex items-center justify-center w-8 h-8 rounded-lg overflow-hidden">
+                <Image src="/images/logo.png" alt="Logo" fill className="object-contain" />
               </div>
               <span className="font-heading text-sm font-bold">
                 Admin Panel
