@@ -45,14 +45,16 @@ export default function AboutPage() {
             </div>
           </div>
 
-          <div className="flex-1 w-full max-w-md lg:max-w-full relative aspect-square lg:aspect-video rounded-3xl overflow-hidden shadow-2xl border border-border/50 group">
-            <div className="absolute inset-0 bg-gradient-to-tr from-brand-indigo/20 to-brand-teal/20 mix-blend-overlay z-10 group-hover:opacity-50 transition-opacity"></div>
-            <Image 
-              src="/images/logo.png" 
-              alt="Personal Library Illustration" 
-              fill 
-              className="object-cover p-12 lg:p-24 dark:invert-[.8] transition-transform duration-700 group-hover:scale-105" 
-            />
+          <div className="flex-1 w-full max-w-md lg:max-w-full relative aspect-square lg:aspect-video rounded-3xl overflow-hidden shadow-xl border border-border/20 group bg-muted/30 flex items-center justify-center p-8">
+            <div className="absolute inset-0 bg-gradient-to-tr from-brand-indigo/10 to-brand-teal/10 mix-blend-overlay z-10 transition-opacity"></div>
+            <div className="relative w-full h-full">
+              <Image 
+                src="/images/logo.png" 
+                alt="Personal Library Illustration" 
+                fill 
+                className="object-contain drop-shadow-xl transition-transform duration-700 group-hover:scale-105" 
+              />
+            </div>
           </div>
         </motion.div>
       </section>

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState, useEffect, use } from "react";
 import { ArrowLeft, Calendar, Folder, FileText, Download, PlayCircle, ExternalLink, Loader2 } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, getDoc, updateDoc, increment } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -22,6 +22,7 @@ export default function KnowledgeDetailPage({ params }: { params: Promise<{ slug
     const fetchItem = async () => {
       try {
         let docData = null;
+        let docRefToUpdate = null;
 
         // Try 1: Fetch by Document ID (cards link by Firebase doc ID)
         try {
@@ -29,6 +30,7 @@ export default function KnowledgeDetailPage({ params }: { params: Promise<{ slug
           const docSnap = await getDoc(docRef);
           if (docSnap.exists()) {
             docData = docSnap.data();
+            docRefToUpdate = docRef;
           }
         } catch {
           // Invalid document ID format, skip
@@ -40,6 +42,7 @@ export default function KnowledgeDetailPage({ params }: { params: Promise<{ slug
           const querySnapshot = await getDocs(q);
           if (!querySnapshot.empty) {
             docData = querySnapshot.docs[0].data();
+            docRefToUpdate = querySnapshot.docs[0].ref;
           }
         }
 
@@ -51,25 +54,55 @@ export default function KnowledgeDetailPage({ params }: { params: Promise<{ slug
             const generatedSlug = data.title?.toLowerCase().replace(/[^a-z0-9]+/g, '-');
             if (generatedSlug === slug || d.id === slug) {
               docData = data;
+              docRefToUpdate = d.ref;
               break;
             }
           }
         }
         
         if (docData) {
+          // Auto Tags Generation
+          let autoTags = [];
+          const views = docData.views || 0;
+          if (views > 50) autoTags.push("🔥 Most Viewed");
+          
+          let dateObj = new Date();
+          if (docData.date) {
+            try { dateObj = new Date(docData.date); } catch(e) {}
+          } else if (docData.createdAt) {
+             dateObj = new Date(docData.createdAt);
+          }
+          
+          const isRecent = (new Date().getTime() - dateObj.getTime()) < 7 * 24 * 60 * 60 * 1000;
+          if (isRecent) autoTags.push("✨ Recently Added");
+          
+          const combinedTags = [...(docData.tags || []), ...autoTags];
+
           setContent({
             title: docData.title,
             subtitle: docData.subtitle,
             shortDescription: docData.shortDescription,
-            publishedAt: docData.date ? new Date(docData.date).toLocaleDateString() : new Date().toLocaleDateString(),
+            publishedAt: dateObj.toLocaleDateString(),
             category: docData.category || "Uncategorized",
-            tags: docData.tags || [],
+            tags: combinedTags,
             thumbnail: docData.thumbnail || "",
             images: docData.contentImages || [],
             videos: docData.videos || [],
             files: docData.files || [],
-            externalLink: docData.link || ""
+            externalLink: docData.link || "",
+            views: views + 1
           });
+
+          // Increment view count in background
+          if (docRefToUpdate) {
+            try {
+              await updateDoc(docRefToUpdate, {
+                views: increment(1)
+              });
+            } catch (updateErr) {
+              console.error("Failed to update views", updateErr);
+            }
+          }
         }
       } catch (error) {
         console.error("Error fetching detail from Firebase:", error);

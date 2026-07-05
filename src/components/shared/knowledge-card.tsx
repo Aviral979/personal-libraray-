@@ -69,7 +69,7 @@ export function KnowledgeCard({
         onMouseLeave={() => setIsHovered(false)}
       >
         {/* Thumbnail */}
-        <div className="relative w-full aspect-[4/3] shrink-0 overflow-hidden bg-muted">
+        <div className="relative w-full aspect-video shrink-0 overflow-hidden bg-muted">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={displayImage}

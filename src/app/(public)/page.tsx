@@ -10,15 +10,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { KnowledgeCard } from "@/components/shared/knowledge-card";
 
-const categories = [
-  "All",
-  "Demo"
-];
 
 export default function HomePage() {
   const [activeCategory, setActiveCategory] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [items, setItems] = useState<any[]>([]);
+  const [dynamicCategories, setDynamicCategories] = useState<string[]>(["All"]);
   const [isFocused, setIsFocused] = useState(false);
 
   useEffect(() => {
@@ -45,6 +42,12 @@ export default function HomePage() {
           };
         });
         setItems(fetchedItems);
+        
+        const uniqueCategories = Array.from(
+          new Set(fetchedItems.map(item => item.category?.name))
+        ).filter(Boolean) as string[];
+        
+        setDynamicCategories(["All", ...uniqueCategories.sort()]);
       } catch (error) {
         console.error("Error fetching from Firebase:", error);
       }
@@ -121,7 +124,7 @@ export default function HomePage() {
         <div className="content-width">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3 overflow-x-auto pb-1 scrollbar-hide snap-x flex-1">
-              {categories.map((category) => (
+              {dynamicCategories.map((category) => (
                 <button
                   key={category}
                   onClick={() => setActiveCategory(category)}
