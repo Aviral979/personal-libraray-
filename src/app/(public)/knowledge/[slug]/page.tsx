@@ -198,8 +198,14 @@ export default function KnowledgeDetailPage({ params }: { params: Promise<{ slug
 
         {/* ─── DESCRIPTION ───────────────────────────────── */}
         {content.shortDescription && (
-          <div className="mb-12 px-2">
-            <div className="text-lg leading-relaxed text-foreground/90 whitespace-pre-wrap font-sans">{content.shortDescription}</div>
+          <div className="mb-12 px-2 space-y-4">
+            {content.shortDescription.split('\n').map((paragraph: string, index: number) => (
+              paragraph.trim() ? (
+                <p key={index} className="text-lg leading-relaxed text-foreground/90 font-sans">
+                  {paragraph}
+                </p>
+              ) : null
+            ))}
           </div>
         )}
 
