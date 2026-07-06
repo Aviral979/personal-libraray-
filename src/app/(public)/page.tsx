@@ -65,7 +65,7 @@ export default function HomePage() {
   return (
     <div className="flex flex-col min-h-screen bg-background">
       {/* ─── PREMIUM HERO & SEARCH ────────────────────────────────────────────── */}
-      <div className="relative w-full min-h-[60vh] flex flex-col items-center justify-center overflow-hidden pt-20 pb-12">
+      <div className="relative w-full min-h-[65vh] flex flex-col items-center justify-center overflow-hidden pt-20 pb-12">
         {/* Background Image & Overlay */}
         <div className="absolute inset-0 z-0">
           <Image
@@ -75,13 +75,26 @@ export default function HomePage() {
             priority
             className="object-cover scale-105"
           />
-          <div className="absolute inset-0 bg-background/60 backdrop-blur-md dark:bg-background/80" />
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/50 to-background" />
+          {/* Changed backdrop-blur-md to backdrop-blur-sm for less blur */}
+          <div className="absolute inset-0 bg-background/55 backdrop-blur-sm dark:bg-background/75" />
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/40 to-background" />
         </div>
 
         {/* Hero Content */}
-        <div className="relative z-10 w-full max-w-4xl mx-auto px-6 text-center space-y-8 mt-8">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-background/50 border border-white/10 backdrop-blur-md shadow-xl text-primary text-sm font-medium animate-in fade-in slide-in-from-bottom-4 duration-700">
+        <div className="relative z-10 w-full max-w-4xl mx-auto px-6 text-center space-y-6 mt-8">
+          
+          {/* Logo container added in Hero */}
+          <div className="mx-auto w-20 h-20 relative rounded-2xl overflow-hidden shadow-2xl border border-white/20 p-2 bg-background/80 backdrop-blur-sm animate-in fade-in zoom-in duration-1000 hover:rotate-6 transition-transform cursor-pointer">
+            <Image
+              src="/images/logo.png"
+              alt="Personal Library Logo"
+              fill
+              priority
+              className="object-contain p-2"
+            />
+          </div>
+
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-background/55 border border-white/10 backdrop-blur-sm shadow-xl text-primary text-sm font-medium animate-in fade-in slide-in-from-bottom-4 duration-700">
             <Sparkles className="h-4 w-4 text-brand-teal" />
             <span className="text-foreground font-semibold">Welcome to your Personal Library</span>
           </div>
@@ -182,6 +195,7 @@ export default function HomePage() {
                   category={item.category}
                   publishedAt={item.publishedAt}
                   authorName={item.authorName}
+                  contentImages={item.contentImages}
                 />
               </div>
             ))}
