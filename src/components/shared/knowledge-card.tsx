@@ -67,7 +67,6 @@ export function KnowledgeCard({
   contentImages = [],
   authorName,
 }: KnowledgeCardProps) {
-  const [isHovered, setIsHovered] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   // Helper to extract image URL string from string or object
@@ -83,21 +82,30 @@ export function KnowledgeCard({
     .map(img => getImageUrl(img))
     .filter(url => url !== "");
 
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (isHovered && validImages.length > 0) {
-      // Start cycling images after 2 seconds
-      interval = setInterval(() => {
-        setCurrentImageIndex((prev) => (prev + 1) % validImages.length);
-      }, 2000);
-    } else {
-      setCurrentImageIndex(0);
+  // Combined list for auto slider (Thumbnail + all unique content images)
+  const slideshowImages: string[] = [];
+  if (thumbnail) {
+    slideshowImages.push(thumbnail);
+  }
+  validImages.forEach(img => {
+    if (img && img !== thumbnail) {
+      slideshowImages.push(img);
     }
-    return () => clearInterval(interval);
-  }, [isHovered, validImages.length]);
+  });
 
   const fallbackThumbnail = "/images/Default thumbnail placeholder (when admin doesn't upload one).png";
-  const baseImage = toDriveDirectUrl(thumbnail || fallbackThumbnail);
+  const hasSlider = slideshowImages.length > 1;
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (hasSlider) {
+      // Start cycling images automatically every 3 seconds
+      interval = setInterval(() => {
+        setCurrentImageIndex((prev) => (prev + 1) % slideshowImages.length);
+      }, 3000);
+    }
+    return () => clearInterval(interval);
+  }, [hasSlider, slideshowImages.length]);
 
   // Use document ID for routing so detail page can always find it
   const linkHref = `/knowledge/${id}`;
@@ -106,44 +114,38 @@ export function KnowledgeCard({
     <Link href={linkHref} className="block h-full">
       <Card 
         className="group h-full flex flex-col overflow-hidden rounded-2xl border border-border/30 bg-card shadow-md hover:shadow-2xl hover:shadow-primary/10 hover:border-primary/30 transition-all duration-500 hover:-translate-y-2 cursor-pointer pt-0 pb-4"
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
       >
         {/* Thumbnail Container */}
         <div className="relative w-full aspect-video shrink-0 overflow-hidden bg-muted">
-          {/* Base Thumbnail */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={baseImage}
-            alt={title}
-            onError={(e) => {
-              e.currentTarget.src = fallbackThumbnail;
-            }}
-            className={`w-full h-full object-cover absolute inset-0 transition-all duration-700 ease-out ${
-              isHovered && validImages.length > 0 ? "opacity-0 scale-95" : "opacity-100 scale-100 group-hover:scale-105"
-            }`}
-          />
-
-          {/* Hover Slide Images */}
-          {validImages.length > 0 && (
+          {slideshowImages.length > 0 ? (
+            slideshowImages.map((imgUrl, index) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={index}
+                src={toDriveDirectUrl(imgUrl)}
+                alt={`${title} - slide ${index + 1}`}
+                onError={(e) => {
+                  e.currentTarget.src = fallbackThumbnail;
+                }}
+                className={`w-full h-full object-cover absolute inset-0 transition-all duration-1000 ease-in-out group-hover:scale-105 ${
+                  index === currentImageIndex ? "opacity-100 z-10" : "opacity-0 z-0 pointer-events-none"
+                }`}
+              />
+            ))
+          ) : (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={toDriveDirectUrl(validImages[currentImageIndex])}
-              alt={`${title} - slide ${currentImageIndex + 1}`}
-              onError={(e) => {
-                e.currentTarget.src = fallbackThumbnail;
-              }}
-              className={`w-full h-full object-cover absolute inset-0 transition-all duration-500 ease-in-out ${
-                isHovered ? "opacity-100 scale-105" : "opacity-0 scale-100 pointer-events-none"
-              }`}
+              src={fallbackThumbnail}
+              alt={title}
+              className="w-full h-full object-cover absolute inset-0 group-hover:scale-105 transition-transform duration-700"
             />
           )}
 
           {/* Gradient overlay at bottom for text contrast */}
-          <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/50 to-transparent pointer-events-none" />
+          <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/50 to-transparent pointer-events-none z-20" />
 
           {/* Badges */}
-          <div className="absolute top-3 left-3 flex flex-wrap gap-2 pointer-events-none">
+          <div className="absolute top-3 left-3 flex flex-wrap gap-2 pointer-events-none z-20">
             {featured && (
               <Badge variant="default" className="bg-brand-indigo hover:bg-brand-indigo/90 shadow-md text-xs font-semibold">
                 Featured
@@ -158,7 +160,7 @@ export function KnowledgeCard({
           
           {/* Category Badge - Bottom Right */}
           {category && (
-            <div className="absolute bottom-3 right-3 pointer-events-none">
+            <div className="absolute bottom-3 right-3 pointer-events-none z-20">
               <Badge variant="secondary" className="bg-background/80 backdrop-blur-md shadow-sm gap-1 text-xs font-medium">
                 <Folder className="h-3 w-3" />
                 {category.name}
