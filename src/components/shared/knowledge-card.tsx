@@ -7,16 +7,31 @@ import { Calendar, Folder } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
-// Helper: Convert any Google Drive link to a direct-renderable image URL
+// Helper: Convert any Google Drive link to a direct-renderable image URL & clean Google redirects
 function toDriveDirectUrl(url: string): string {
   if (!url) return url;
-  const fileMatch = url.match(/drive\.google\.com\/file\/d\/([^/]+)/);
+  
+  let cleanUrl = url.trim();
+  
+  // Extract real image from Google search redirect URL (imgurl parameter)
+  const googleImgMatch = cleanUrl.match(/[?&]imgurl=([^&]+)/);
+  if (googleImgMatch && googleImgMatch[1]) {
+    try {
+      cleanUrl = decodeURIComponent(googleImgMatch[1]);
+    } catch (e) {
+      console.error("Failed to decode google imgurl on card", e);
+    }
+  }
+
+  // Google Drive url formats
+  const fileMatch = cleanUrl.match(/drive\.google\.com\/file\/d\/([^/]+)/);
   if (fileMatch && fileMatch[1]) return `https://drive.google.com/thumbnail?id=${fileMatch[1]}&sz=w600`;
-  const openMatch = url.match(/drive\.google\.com\/open\?id=([^&]+)/);
+  const openMatch = cleanUrl.match(/drive\.google\.com\/open\?id=([^&]+)/);
   if (openMatch && openMatch[1]) return `https://drive.google.com/thumbnail?id=${openMatch[1]}&sz=w600`;
-  const ucMatch = url.match(/drive\.google\.com\/uc\?.*id=([^&]+)/);
+  const ucMatch = cleanUrl.match(/drive\.google\.com\/uc\?.*id=([^&]+)/);
   if (ucMatch && ucMatch[1]) return `https://drive.google.com/thumbnail?id=${ucMatch[1]}&sz=w600`;
-  return url;
+  
+  return cleanUrl;
 }
 
 export interface KnowledgeCardProps {
@@ -36,13 +51,12 @@ export interface KnowledgeCardProps {
   }[];
   featured?: boolean;
   popular?: boolean;
-  contentImages?: string[];
+  contentImages?: any[]; // Allow strings or objects { id, url, note }
   authorName?: string;
 }
 
 export function KnowledgeCard({
   id,
-  slug,
   title,
   shortDescription,
   thumbnail,
@@ -56,22 +70,34 @@ export function KnowledgeCard({
   const [isHovered, setIsHovered] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
+  // Helper to extract image URL string from string or object
+  const getImageUrl = (img: any): string => {
+    if (!img) return "";
+    if (typeof img === "string") return img;
+    if (typeof img === "object" && img.url) return img.url;
+    return "";
+  };
+
+  // Filter content images to ensure we only count non-empty urls
+  const validImages = contentImages
+    .map(img => getImageUrl(img))
+    .filter(url => url !== "");
+
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    if (isHovered && contentImages.length > 0) {
+    if (isHovered && validImages.length > 0) {
+      // Start cycling images after 2 seconds
       interval = setInterval(() => {
-        setCurrentImageIndex((prev) => (prev + 1) % contentImages.length);
-      }, 1200);
+        setCurrentImageIndex((prev) => (prev + 1) % validImages.length);
+      }, 2000);
     } else {
       setCurrentImageIndex(0);
     }
     return () => clearInterval(interval);
-  }, [isHovered, contentImages.length]);
+  }, [isHovered, validImages.length]);
 
-  const rawDisplayImage = (isHovered && contentImages.length > 0) 
-    ? contentImages[currentImageIndex] 
-    : (thumbnail || "/images/Default thumbnail placeholder (when admin doesn't upload one).png");
-  const displayImage = toDriveDirectUrl(rawDisplayImage);
+  const fallbackThumbnail = "/images/Default thumbnail placeholder (when admin doesn't upload one).png";
+  const baseImage = toDriveDirectUrl(thumbnail || fallbackThumbnail);
 
   // Use document ID for routing so detail page can always find it
   const linkHref = `/knowledge/${id}`;
@@ -79,31 +105,52 @@ export function KnowledgeCard({
   return (
     <Link href={linkHref} className="block h-full">
       <Card 
-        className="group h-full flex flex-col overflow-hidden rounded-2xl border border-border/30 bg-card shadow-md hover:shadow-2xl hover:shadow-primary/10 hover:border-primary/30 transition-all duration-500 hover:-translate-y-2 cursor-pointer"
+        className="group h-full flex flex-col overflow-hidden rounded-2xl border border-border/30 bg-card shadow-md hover:shadow-2xl hover:shadow-primary/10 hover:border-primary/30 transition-all duration-500 hover:-translate-y-2 cursor-pointer pt-0 pb-4"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
-        {/* Thumbnail */}
+        {/* Thumbnail Container */}
         <div className="relative w-full aspect-video shrink-0 overflow-hidden bg-muted">
+          {/* Base Thumbnail */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={displayImage}
+            src={baseImage}
             alt={title}
-            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 ease-out"
+            onError={(e) => {
+              e.currentTarget.src = fallbackThumbnail;
+            }}
+            className={`w-full h-full object-cover absolute inset-0 transition-all duration-700 ease-out ${
+              isHovered && validImages.length > 0 ? "opacity-0 scale-95" : "opacity-100 scale-100 group-hover:scale-105"
+            }`}
           />
 
+          {/* Hover Slide Images */}
+          {validImages.length > 0 && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={toDriveDirectUrl(validImages[currentImageIndex])}
+              alt={`${title} - slide ${currentImageIndex + 1}`}
+              onError={(e) => {
+                e.currentTarget.src = fallbackThumbnail;
+              }}
+              className={`w-full h-full object-cover absolute inset-0 transition-all duration-500 ease-in-out ${
+                isHovered ? "opacity-100 scale-105" : "opacity-0 scale-100 pointer-events-none"
+              }`}
+            />
+          )}
+
           {/* Gradient overlay at bottom for text contrast */}
-          <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/50 to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/50 to-transparent pointer-events-none" />
 
           {/* Badges */}
-          <div className="absolute top-3 left-3 flex flex-wrap gap-2">
+          <div className="absolute top-3 left-3 flex flex-wrap gap-2 pointer-events-none">
             {featured && (
-              <Badge variant="default" className="bg-brand-indigo hover:bg-brand-indigo/90 shadow-md text-xs">
+              <Badge variant="default" className="bg-brand-indigo hover:bg-brand-indigo/90 shadow-md text-xs font-semibold">
                 Featured
               </Badge>
             )}
             {popular && (
-              <Badge variant="default" className="bg-brand-warning text-brand-warning-foreground hover:bg-brand-warning/90 shadow-md text-xs">
+              <Badge variant="default" className="bg-brand-warning text-brand-warning-foreground hover:bg-brand-warning/90 shadow-md text-xs font-semibold">
                 Popular
               </Badge>
             )}
@@ -111,7 +158,7 @@ export function KnowledgeCard({
           
           {/* Category Badge - Bottom Right */}
           {category && (
-            <div className="absolute bottom-3 right-3">
+            <div className="absolute bottom-3 right-3 pointer-events-none">
               <Badge variant="secondary" className="bg-background/80 backdrop-blur-md shadow-sm gap-1 text-xs font-medium">
                 <Folder className="h-3 w-3" />
                 {category.name}

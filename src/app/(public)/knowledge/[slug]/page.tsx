@@ -12,22 +12,35 @@ import { Separator } from "@/components/ui/separator";
 // Helper: Convert any Google Drive link to a direct-renderable image URL
 function toDriveDirectUrl(url: string): string {
   if (!url) return url;
+  
+  let cleanUrl = url.trim();
+  
+  // Extract real image from Google search redirect URL (imgurl parameter)
+  const googleImgMatch = cleanUrl.match(/[?&]imgurl=([^&]+)/);
+  if (googleImgMatch && googleImgMatch[1]) {
+    try {
+      cleanUrl = decodeURIComponent(googleImgMatch[1]);
+    } catch (e) {
+      console.error("Failed to decode google imgurl on detail page", e);
+    }
+  }
+
   // Format: https://drive.google.com/file/d/FILE_ID/view...
-  const fileMatch = url.match(/drive\.google\.com\/file\/d\/([^/]+)/);
+  const fileMatch = cleanUrl.match(/drive\.google\.com\/file\/d\/([^/]+)/);
   if (fileMatch && fileMatch[1]) {
     return `https://drive.google.com/thumbnail?id=${fileMatch[1]}&sz=w1200`;
   }
   // Format: https://drive.google.com/open?id=FILE_ID
-  const openMatch = url.match(/drive\.google\.com\/open\?id=([^&]+)/);
+  const openMatch = cleanUrl.match(/drive\.google\.com\/open\?id=([^&]+)/);
   if (openMatch && openMatch[1]) {
     return `https://drive.google.com/thumbnail?id=${openMatch[1]}&sz=w1200`;
   }
   // Format: https://drive.google.com/uc?id=FILE_ID
-  const ucMatch = url.match(/drive\.google\.com\/uc\?.*id=([^&]+)/);
+  const ucMatch = cleanUrl.match(/drive\.google\.com\/uc\?.*id=([^&]+)/);
   if (ucMatch && ucMatch[1]) {
     return `https://drive.google.com/thumbnail?id=${ucMatch[1]}&sz=w1200`;
   }
-  return url;
+  return cleanUrl;
 }
 
 // This is the detail page for displaying knowledge items
@@ -104,6 +117,37 @@ export default function KnowledgeDetailPage({ params }: { params: Promise<{ slug
           
           const combinedTags = [...(docData.tags || []), ...autoTags];
 
+          // Check for files that are actually images and move them to contentImages
+          const isImageUrl = (urlStr: string): boolean => {
+            if (!urlStr) return false;
+            return urlStr.match(/\.(jpeg|jpg|gif|png|webp|svg|bmp|tiff|ico)(\?.*)?$/i) !== null || 
+                   urlStr.includes('drive.google.com/file/d/') || 
+                   urlStr.includes('drive.google.com/open?id=') || 
+                   urlStr.includes('googleusercontent.com') ||
+                   urlStr.includes('gstatic.com') ||
+                   urlStr.includes('images.unsplash.com') || 
+                   urlStr.includes('i.imgur.com') || 
+                   urlStr.includes('pbs.twimg.com') || 
+                   urlStr.includes('instagram') || 
+                   urlStr.includes('pinimg.com');
+          };
+
+          const rawFiles = docData.files || [];
+          const processedFiles: any[] = [];
+          const extraImages: any[] = [];
+          
+          rawFiles.forEach((file: any) => {
+            if (file && file.url && isImageUrl(file.url)) {
+              extraImages.push({
+                id: file.id,
+                url: file.url,
+                note: file.name || "Attached Image"
+              });
+            } else {
+              processedFiles.push(file);
+            }
+          });
+
           setContent({
             title: docData.title,
             subtitle: docData.subtitle,
@@ -112,9 +156,9 @@ export default function KnowledgeDetailPage({ params }: { params: Promise<{ slug
             category: docData.category || "Uncategorized",
             tags: combinedTags,
             thumbnail: docData.thumbnail || "",
-            contentImages: docData.contentImages || [],
+            contentImages: [...(docData.contentImages || []), ...extraImages],
             videos: docData.videos || [],
-            files: docData.files || [],
+            files: processedFiles,
             externalLinks: docData.externalLinks || [],
             externalLink: docData.link || docData.externalLink || "",
             views: views + 1
