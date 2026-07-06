@@ -82,17 +82,6 @@ export default function HomePage() {
 
         {/* Hero Content */}
         <div className="relative z-10 w-full max-w-4xl mx-auto px-6 text-center space-y-6 mt-8">
-          
-          {/* Logo container added in Hero */}
-          <div className="mx-auto w-20 h-20 relative rounded-2xl overflow-hidden shadow-2xl border border-white/20 p-2 bg-background/80 backdrop-blur-sm animate-in fade-in zoom-in duration-1000 hover:rotate-6 transition-transform cursor-pointer">
-            <Image
-              src="/images/logo.png"
-              alt="Personal Library Logo"
-              fill
-              priority
-              className="object-contain p-2"
-            />
-          </div>
 
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-background/55 border border-white/10 backdrop-blur-sm shadow-xl text-primary text-sm font-medium animate-in fade-in slide-in-from-bottom-4 duration-700">
             <Sparkles className="h-4 w-4 text-brand-teal" />

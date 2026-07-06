@@ -67,6 +67,7 @@ export function KnowledgeCard({
   contentImages = [],
   authorName,
 }: KnowledgeCardProps) {
+  const [isHovered, setIsHovered] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   // Helper to extract image URL string from string or object
@@ -98,14 +99,16 @@ export function KnowledgeCard({
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    if (hasSlider) {
-      // Start cycling images automatically every 3 seconds
+    if (isHovered && hasSlider) {
+      // Start cycling images automatically every 3 seconds only on hover
       interval = setInterval(() => {
         setCurrentImageIndex((prev) => (prev + 1) % slideshowImages.length);
       }, 3000);
+    } else {
+      setCurrentImageIndex(0);
     }
     return () => clearInterval(interval);
-  }, [hasSlider, slideshowImages.length]);
+  }, [isHovered, hasSlider, slideshowImages.length]);
 
   // Use document ID for routing so detail page can always find it
   const linkHref = `/knowledge/${id}`;
@@ -114,6 +117,8 @@ export function KnowledgeCard({
     <Link href={linkHref} className="block h-full">
       <Card 
         className="group h-full flex flex-col overflow-hidden rounded-2xl border border-border/30 bg-card shadow-md hover:shadow-2xl hover:shadow-primary/10 hover:border-primary/30 transition-all duration-500 hover:-translate-y-2 cursor-pointer pt-0 pb-4"
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
       >
         {/* Thumbnail Container */}
         <div className="relative w-full aspect-video shrink-0 overflow-hidden bg-muted">
