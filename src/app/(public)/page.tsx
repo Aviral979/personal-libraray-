@@ -75,8 +75,8 @@ export default function HomePage() {
             priority
             className="object-cover scale-105"
           />
-          {/* Changed backdrop-blur-md to backdrop-blur-sm for less blur */}
-          <div className="absolute inset-0 bg-background/55 backdrop-blur-sm dark:bg-background/75" />
+          {/* Changed backdrop-blur-md to backdrop-blur-[2px] for less blur */}
+          <div className="absolute inset-0 bg-background/55 backdrop-blur-[2px] dark:bg-background/75" />
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/40 to-background" />
         </div>
 

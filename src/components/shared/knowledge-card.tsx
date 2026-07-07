@@ -99,15 +99,26 @@ export function KnowledgeCard({
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
+    let timeout: NodeJS.Timeout;
+    
     if (isHovered && hasSlider) {
-      // Start cycling images automatically every 3 seconds only on hover
+      // Shift to the second image after a short delay (600ms) so hover feedback is quick
+      timeout = setTimeout(() => {
+        setCurrentImageIndex(1 % slideshowImages.length);
+      }, 600);
+
+      // Start cycling images automatically every 2 seconds on hover
       interval = setInterval(() => {
         setCurrentImageIndex((prev) => (prev + 1) % slideshowImages.length);
-      }, 3000);
+      }, 2000);
     } else {
       setCurrentImageIndex(0);
     }
-    return () => clearInterval(interval);
+
+    return () => {
+      clearInterval(interval);
+      clearTimeout(timeout);
+    };
   }, [isHovered, hasSlider, slideshowImages.length]);
 
   // Use document ID for routing so detail page can always find it
