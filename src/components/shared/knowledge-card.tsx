@@ -102,15 +102,15 @@ export function KnowledgeCard({
     let timeout: NodeJS.Timeout;
     
     if (isHovered && hasSlider) {
-      // Shift to the second image after a short delay (600ms) so hover feedback is quick
+      // Shift to the second image after 1 second of hover to prevent accidental triggers
       timeout = setTimeout(() => {
         setCurrentImageIndex(1 % slideshowImages.length);
-      }, 600);
+      }, 1000);
 
-      // Start cycling images automatically every 2 seconds on hover
+      // Cycle images every 4 seconds for a slower, more premium slideshow experience
       interval = setInterval(() => {
         setCurrentImageIndex((prev) => (prev + 1) % slideshowImages.length);
-      }, 2000);
+      }, 4000);
     } else {
       setCurrentImageIndex(0);
     }
