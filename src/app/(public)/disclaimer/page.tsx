@@ -1,4 +1,4 @@
-import { AlertTriangle, Info, HelpCircle, RefreshCw } from "lucide-react";
+import { AlertTriangle, Info, HelpCircle, RefreshCw, Copyright } from "lucide-react";
 
 export default function DisclaimerPage() {
   const lastUpdated = new Date().toLocaleDateString("en-US", {
@@ -63,7 +63,19 @@ export default function DisclaimerPage() {
 
           <section className="bg-card rounded-2xl border p-6 sm:p-8 shadow-sm space-y-4">
             <h2 className="text-2xl font-bold text-foreground flex items-center gap-2.5">
-              <HelpCircle className="h-5 w-5 text-primary" /> 4. Professional & Legal Advice
+              <Copyright className="h-5 w-5 text-amber-600 dark:text-amber-400" /> 4. Content Ownership & Copyrights
+            </h2>
+            <p>
+              Many of the knowledge items, articles, descriptions, images, files, and links saved on this platform are collected from third-party websites, external creators, or public sources.
+            </p>
+            <p className="font-semibold text-foreground/90">
+              We explicitly state that we do not own, control, or hold the intellectual property or copyright for this external information. All rights, copyright, and trademarks belong to their respective creators and original platform owners.
+            </p>
+          </section>
+
+          <section className="bg-card rounded-2xl border p-6 sm:p-8 shadow-sm space-y-4">
+            <h2 className="text-2xl font-bold text-foreground flex items-center gap-2.5">
+              <HelpCircle className="h-5 w-5 text-primary" /> 5. Professional & Legal Advice
             </h2>
             <p>
               The contents and records saved in Personal Library are for personal archiving and educational research purposes only. Nothing contained on this site should be construed as professional, legal, medical, or financial advice.
@@ -71,7 +83,7 @@ export default function DisclaimerPage() {
           </section>
 
           <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-foreground border-b pb-2">5. "Use at Your Own Risk"</h2>
+            <h2 className="text-2xl font-bold text-foreground border-b pb-2">6. \"Use at Your Own Risk\"</h2>
             <p>
               Your reliance on any information or content retrieved from this site is solely at your own risk. We shall not be liable for any losses, damages, or claims arising from the use of our digital library system.
             </p>
