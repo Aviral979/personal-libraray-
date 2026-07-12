@@ -156,6 +156,8 @@ export default function CreateKnowledgePage() {
   const [extUrlInput, setExtUrlInput] = useState("");
   const [extNoteInput, setExtNoteInput] = useState("");
   const [existingCategories, setExistingCategories] = useState<string[]>([]);
+  const [isCreatingNewCategory, setIsCreatingNewCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
 
   // Fetch unique existing categories
   useEffect(() => {
@@ -200,6 +202,15 @@ export default function CreateKnowledgePage() {
                 toast.error("You don't have permission to edit this item");
                 router.push("/admin/knowledge");
                 return;
+              }
+
+              if (editItem.category) {
+                setExistingCategories(prev => {
+                  if (!prev.includes(editItem.category)) {
+                    return [...prev, editItem.category].sort();
+                  }
+                  return prev;
+                });
               }
 
               setFormData({
@@ -860,19 +871,49 @@ export default function CreateKnowledgePage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="category">Category (Text) *</Label>
-                <Input
-                  id="category"
-                  list="category-suggestions"
-                  placeholder="e.g. Web Design"
-                  value={formData.category}
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                />
-                <datalist id="category-suggestions">
-                  {existingCategories.map((cat, i) => (
-                    <option key={i} value={cat} />
-                  ))}
-                </datalist>
+                <Label htmlFor="category">Category *</Label>
+                <Select
+                  value={isCreatingNewCategory ? "NEW_CATEGORY" : (existingCategories.includes(formData.category) ? formData.category : "")}
+                  onValueChange={(val) => {
+                    if (val === "NEW_CATEGORY") {
+                      setIsCreatingNewCategory(true);
+                      setFormData({ ...formData, category: newCategoryName });
+                    } else {
+                      setIsCreatingNewCategory(false);
+                      setFormData({ ...formData, category: val || "" });
+                    }
+                  }}
+                >
+                  <SelectTrigger id="category">
+                    <SelectValue placeholder="Choose a category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {existingCategories.map((cat, i) => (
+                      <SelectItem key={i} value={cat}>
+                        {cat}
+                      </SelectItem>
+                    ))}
+                    <SelectItem value="NEW_CATEGORY" className="text-primary font-medium">
+                      + Create New Category
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {isCreatingNewCategory && (
+                  <div className="pt-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                    <Input
+                      id="new-category"
+                      placeholder="Enter new category name..."
+                      value={newCategoryName}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setNewCategoryName(val);
+                        setFormData({ ...formData, category: val });
+                      }}
+                      className="mt-1"
+                    />
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
