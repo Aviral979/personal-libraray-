@@ -1,41 +1,135 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Clock } from "lucide-react";
+import { Clock, Search, Sparkles } from "lucide-react";
+import { db } from "@/lib/firebase";
+import { collection, getDocs, query, where } from "firebase/firestore";
+import { KnowledgeCard } from "@/components/shared/knowledge-card";
+import { Input } from "@/components/ui/input";
 
 export default function LatestPage() {
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  useEffect(() => {
+    const fetchLatest = async () => {
+      try {
+        const cacheKey = "knowledge_items_cache";
+        let fetchedItems: any[] = [];
+
+        // Try load from cache
+        const cached = sessionStorage.getItem(cacheKey);
+        if (cached) {
+          fetchedItems = JSON.parse(cached);
+        } else {
+          const q = query(collection(db, "knowledgeItems"), where("status", "==", "PUBLISHED"));
+          const querySnapshot = await getDocs(q);
+          fetchedItems = querySnapshot.docs.map(doc => {
+            const data = doc.data();
+            let dateObj = new Date();
+            if (data.date) {
+              try { dateObj = new Date(data.date); } catch(e) {}
+            } else if (data.createdAt) {
+               dateObj = new Date(data.createdAt);
+            }
+            return {
+              id: doc.id,
+              ...data,
+              publishedAt: dateObj,
+              category: { 
+                name: data.category || "Uncategorized", 
+                slug: (data.category || "uncategorized").toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '')
+              }
+            };
+          });
+          sessionStorage.setItem(cacheKey, JSON.stringify(fetchedItems));
+        }
+
+        // Map cached dates back to Date objects and sort chronologically
+        const mapped = fetchedItems.map(item => ({
+          ...item,
+          publishedAt: item.publishedAt ? new Date(item.publishedAt) : new Date()
+        })).sort((a, b) => b.publishedAt.getTime() - a.publishedAt.getTime());
+
+        setItems(mapped);
+      } catch (error) {
+        console.error("Error fetching latest items:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchLatest();
+  }, []);
+
+  const filteredItems = items.filter(item =>
+    item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    item.shortDescription?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
-    <div className="content-width py-12">
+    <div className="content-width py-12 min-h-screen bg-background">
+      {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="mb-10"
+        className="space-y-4 mb-10"
       >
-        <h1 className="font-heading text-3xl sm:text-4xl font-bold mb-3">
-          Latest Additions
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold">
+          <Clock className="h-3.5 w-3.5" />
+          <span>Chronological Stream</span>
+        </div>
+        <h1 className="font-heading text-4xl sm:text-5xl font-extrabold tracking-tight">
+          Latest <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-indigo to-brand-teal">Additions</span>
         </h1>
-        <p className="text-muted-foreground">
-          Recently added knowledge items in chronological order.
+        <p className="text-muted-foreground text-base sm:text-lg max-w-xl">
+          View recently curated knowledge documents, web archives, and media assets in reverse chronological order.
         </p>
       </motion.div>
 
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.5, delay: 0.2 }}
-        className="text-center py-20"
-      >
-        <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-muted mx-auto mb-4">
-          <Clock className="h-8 w-8 text-muted-foreground" />
+      {/* Filter and Search */}
+      <div className="relative max-w-md mb-8">
+        <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Search latest uploads..."
+          className="pl-9 h-10 rounded-xl"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+      </div>
+
+      {/* Grid Content */}
+      {loading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="aspect-[4/3] rounded-2xl bg-card border border-border/60 animate-pulse flex flex-col p-4 space-y-3">
+              <div className="flex-1 bg-muted rounded-xl" />
+              <div className="h-4 w-2/3 bg-muted rounded" />
+              <div className="h-3 w-1/3 bg-muted rounded" />
+            </div>
+          ))}
         </div>
-        <h2 className="font-heading text-xl font-semibold mb-2">
-          Nothing here yet
-        </h2>
-        <p className="text-muted-foreground text-sm max-w-sm mx-auto">
-          New knowledge items will appear here as they are published.
-        </p>
-      </motion.div>
+      ) : filteredItems.length > 0 ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredItems.map((item) => (
+            <KnowledgeCard key={item.id} {...item} />
+          ))}
+        </div>
+      ) : (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="text-center py-20 bg-card rounded-2xl border border-border/60"
+        >
+          <Clock className="h-10 w-10 text-muted-foreground mx-auto mb-4 opacity-50" />
+          <h2 className="font-heading text-xl font-semibold mb-2">No items found</h2>
+          <p className="text-muted-foreground text-sm max-w-sm mx-auto">
+            There are no recently published items or your search matched no items.
+          </p>
+        </motion.div>
+      )}
     </div>
   );
 }
