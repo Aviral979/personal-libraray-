@@ -6,7 +6,6 @@ import { Separator } from "@/components/ui/separator";
 const footerLinks = {
   explore: [
     { href: "/categories", label: "Categories" },
-    { href: "/collections", label: "Collections" },
     { href: "/latest", label: "Latest" },
     { href: "/popular", label: "Popular" },
   ],

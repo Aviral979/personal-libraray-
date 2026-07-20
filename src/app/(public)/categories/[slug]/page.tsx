@@ -28,7 +28,7 @@ export default function CategoryDetailPage({ params }: CategoryDetailPageProps) 
         let fetchedItems: any[] = [];
         
         // Cache read to load instantly
-        const cached = sessionStorage.getItem(cacheKey);
+        const cached = typeof window !== "undefined" ? sessionStorage.getItem(cacheKey) : null;
         if (cached) {
           fetchedItems = JSON.parse(cached);
         } else {
@@ -53,7 +53,9 @@ export default function CategoryDetailPage({ params }: CategoryDetailPageProps) 
                 .replace(/(^-|-$)+/g, "")
             };
           });
-          sessionStorage.setItem(cacheKey, JSON.stringify(fetchedItems));
+          if (typeof window !== "undefined") {
+            sessionStorage.setItem(cacheKey, JSON.stringify(fetchedItems));
+          }
         }
 
         // Standardize format and mapping for cached data

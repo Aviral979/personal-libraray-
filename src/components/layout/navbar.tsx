@@ -19,7 +19,6 @@ import { ThemeToggle } from "@/components/shared/theme-toggle";
 const navLinks = [
   { href: "/", label: "Home" },
   { href: "/categories", label: "Categories" },
-  { href: "/collections", label: "Collections" },
   { href: "/latest", label: "Latest" },
   { href: "/popular", label: "Popular" },
   { href: "/about", label: "About" },

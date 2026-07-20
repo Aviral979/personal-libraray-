@@ -20,7 +20,7 @@ export default function PopularPage() {
         let fetchedItems: any[] = [];
 
         // Check Cache
-        const cached = sessionStorage.getItem(cacheKey);
+        const cached = typeof window !== "undefined" ? sessionStorage.getItem(cacheKey) : null;
         if (cached) {
           fetchedItems = JSON.parse(cached);
         } else {
@@ -44,7 +44,9 @@ export default function PopularPage() {
               }
             };
           });
-          sessionStorage.setItem(cacheKey, JSON.stringify(fetchedItems));
+          if (typeof window !== "undefined") {
+            sessionStorage.setItem(cacheKey, JSON.stringify(fetchedItems));
+          }
         }
 
         // Map and Sort by views descending

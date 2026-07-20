@@ -20,7 +20,7 @@ export default function CategoriesPage() {
         let fetchedItems: any[] = [];
         
         // Cache check for instant loading
-        const cached = sessionStorage.getItem(cacheKey);
+        const cached = typeof window !== "undefined" ? sessionStorage.getItem(cacheKey) : null;
         if (cached) {
           fetchedItems = JSON.parse(cached);
         } else {
@@ -30,7 +30,9 @@ export default function CategoriesPage() {
             id: doc.id,
             category: doc.data().category || "Uncategorized"
           }));
-          sessionStorage.setItem(cacheKey, JSON.stringify(fetchedItems));
+          if (typeof window !== "undefined") {
+            sessionStorage.setItem(cacheKey, JSON.stringify(fetchedItems));
+          }
         }
 
         const catMap = new Map<string, number>();

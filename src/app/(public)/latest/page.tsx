@@ -20,7 +20,7 @@ export default function LatestPage() {
         let fetchedItems: any[] = [];
 
         // Try load from cache
-        const cached = sessionStorage.getItem(cacheKey);
+        const cached = typeof window !== "undefined" ? sessionStorage.getItem(cacheKey) : null;
         if (cached) {
           fetchedItems = JSON.parse(cached);
         } else {
@@ -44,7 +44,9 @@ export default function LatestPage() {
               }
             };
           });
-          sessionStorage.setItem(cacheKey, JSON.stringify(fetchedItems));
+          if (typeof window !== "undefined") {
+            sessionStorage.setItem(cacheKey, JSON.stringify(fetchedItems));
+          }
         }
 
         // Map cached dates back to Date objects and sort chronologically
