@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Save, Loader2, Image as ImageIcon, Link as LinkIcon, FileText, Video, Upload, ScanText, Copy, Trash2 } from "lucide-react";
 import { db, storage } from "@/lib/firebase";
@@ -35,6 +35,94 @@ function toDriveDirectUrl(url: string): string {
   const ucMatch = url.match(/drive\.google\.com\/uc\?.*id=([^&]+)/);
   if (ucMatch && ucMatch[1]) return `https://drive.google.com/thumbnail?id=${ucMatch[1]}&sz=w600`;
   return url;
+}
+
+// Helper: Auto-detect media type from URL and Note
+function autoDetectMediaType(urlStr: string, noteStr: string = ""): "image" | "video" | "document" {
+  if (!urlStr || !urlStr.trim()) return "document";
+  let url = urlStr.trim();
+  
+  // Pre-process Google redirect URLs (e.g. from Google Image search results)
+  let wasGoogleImageSearch = false;
+  const googleImgMatch = url.match(/[?&]imgurl=([^&]+)/);
+  if (googleImgMatch && googleImgMatch[1]) {
+    try {
+      url = decodeURIComponent(googleImgMatch[1]);
+      wasGoogleImageSearch = true;
+    } catch (e) {}
+  }
+
+  const lowerUrl = url.toLowerCase();
+  const lowerNote = noteStr.toLowerCase();
+
+  // 1. YouTube & Known Video Hosts
+  if (
+    lowerUrl.includes("youtube.com") || 
+    lowerUrl.includes("youtu.be") || 
+    lowerUrl.includes("vimeo.com") || 
+    lowerUrl.includes("tiktok.com") || 
+    lowerUrl.includes("dailymotion.com") ||
+    lowerUrl.includes("streamable.com") ||
+    lowerUrl.includes("loom.com") ||
+    lowerUrl.includes("wistia.com")
+  ) {
+    return "video";
+  }
+
+  // 2. Direct Video Extensions
+  if (lowerUrl.match(/\.(mp4|webm|ogg|mov|avi|mkv|flv|m4v|3gp|wmv|ts)(\?.*)?$/i)) {
+    return "video";
+  }
+
+  // 3. Direct Image Extensions
+  if (lowerUrl.match(/\.(jpeg|jpg|gif|png|webp|svg|bmp|tiff|ico|heic|avif)(\?.*)?$/i)) {
+    return "image";
+  }
+
+  // 4. Direct Document Extensions
+  if (lowerUrl.match(/\.(pdf|doc|docx|xls|xlsx|ppt|pptx|zip|rar|7z|tar|gz|txt|csv|epub|apk|dmg|exe)(\?.*)?$/i)) {
+    return "document";
+  }
+
+  // 5. Image Hosting Providers & Search engines
+  if (
+    wasGoogleImageSearch ||
+    lowerUrl.includes("googleusercontent.com") ||
+    lowerUrl.includes("gstatic.com") ||
+    lowerUrl.includes("google.com/imgres") ||
+    lowerUrl.includes("images.unsplash.com") ||
+    lowerUrl.includes("i.imgur.com") ||
+    lowerUrl.includes("imgur.com/a/") ||
+    lowerUrl.includes("pbs.twimg.com") ||
+    lowerUrl.includes("instagram.com/p/") ||
+    lowerUrl.includes("pinimg.com") ||
+    lowerUrl.includes("giphy.com") ||
+    lowerUrl.includes("cdn.discordapp.com/attachments")
+  ) {
+    return "image";
+  }
+
+  // 6. Keywords in URL or Note
+  const videoKeywords = ["video", "mp4", "mov", "mkv", "webm", "avi", "clip", "film", "recording", "lecture", "screenrec", "tutorial", "vlog", "watch", "play"];
+  const imageKeywords = ["image", "photo", "pic", "picture", "png", "jpg", "jpeg", "gif", "screenshot", "thumb", "poster", "illustration", "banner", "img"];
+  const docKeywords = ["pdf", "document", "doc", "docx", "sheet", "slide", "presentation", "ebook", "report", "manual", "guide", "file", "archive"];
+
+  if (videoKeywords.some(kw => lowerUrl.includes(kw) || lowerNote.includes(kw))) {
+    return "video";
+  }
+  if (imageKeywords.some(kw => lowerUrl.includes(kw) || lowerNote.includes(kw))) {
+    return "image";
+  }
+  if (docKeywords.some(kw => lowerUrl.includes(kw) || lowerNote.includes(kw))) {
+    return "document";
+  }
+
+  // 7. Google Drive links default to video if no image/doc keyword is specified
+  if (lowerUrl.includes("drive.google.com")) {
+    return "video";
+  }
+
+  return "document";
 }
 
 export default function CreateKnowledgePage() {
@@ -153,6 +241,12 @@ export default function CreateKnowledgePage() {
   const [urlInput, setUrlInput] = useState("");
   const [urlNoteInput, setUrlNoteInput] = useState("");
   const [urlMediaType, setUrlMediaType] = useState("auto");
+
+  // Dynamically detect media type as user types/pastes URL
+  const detectedType = useMemo(() => {
+    if (!urlInput.trim()) return null;
+    return autoDetectMediaType(urlInput, urlNoteInput);
+  }, [urlInput, urlNoteInput]);
   const [extUrlInput, setExtUrlInput] = useState("");
   const [extNoteInput, setExtNoteInput] = useState("");
   const [existingCategories, setExistingCategories] = useState<string[]>([]);
@@ -591,20 +685,34 @@ export default function CreateKnowledgePage() {
                     <div className="sm:col-span-5 space-y-2">
                       <Label className="text-xs">Media URL</Label>
                       <Input 
-                        placeholder="https://youtube.com/watch?v=..." 
+                        placeholder="https://youtube.com/watch?v=... or Drive URL" 
                         className="text-sm" 
                         value={urlInput}
                         onChange={(e) => setUrlInput(e.target.value)}
                       />
                     </div>
                     <div className="sm:col-span-3 space-y-2">
-                      <Label className="text-xs">Type (Optional)</Label>
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs">Type (Optional)</Label>
+                        {urlMediaType === "auto" && detectedType && (
+                          <span className="text-[10px] font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full capitalize animate-fade-in">
+                            ✨ {detectedType}
+                          </span>
+                        )}
+                      </div>
                       <Select value={urlMediaType} onValueChange={(val) => setUrlMediaType(val || "auto")}>
                         <SelectTrigger className="text-sm h-9">
-                          <SelectValue placeholder="Auto" />
+                          <SelectValue placeholder="Auto Detect">
+                            {urlMediaType === "auto" 
+                              ? (detectedType ? `Auto Detect (${detectedType.toUpperCase()})` : "Auto Detect")
+                              : (urlMediaType.charAt(0).toUpperCase() + urlMediaType.slice(1))
+                            }
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="auto">Auto Detect</SelectItem>
+                          <SelectItem value="auto">
+                            Auto Detect {detectedType ? `(${detectedType.toUpperCase()})` : ""}
+                          </SelectItem>
                           <SelectItem value="image">Image</SelectItem>
                           <SelectItem value="video">Video</SelectItem>
                           <SelectItem value="document">Document</SelectItem>
@@ -624,7 +732,7 @@ export default function CreateKnowledgePage() {
 
                   <Button 
                     variant="secondary" 
-                    className="w-full gap-2"
+                    className="w-full gap-2 cursor-pointer"
                     onClick={() => {
                       if (!urlInput.trim()) {
                         toast.error("Please enter a URL");
@@ -632,13 +740,10 @@ export default function CreateKnowledgePage() {
                       }
 
                       let url = urlInput.trim();
-                      // Pre-process Google redirect URLs (e.g. from Google Image search results)
-                      let wasGoogleImageSearch = false;
                       const googleImgMatch = url.match(/[?&]imgurl=([^&]+)/);
                       if (googleImgMatch && googleImgMatch[1]) {
                         try {
                           url = decodeURIComponent(googleImgMatch[1]);
-                          wasGoogleImageSearch = true;
                         } catch (e) {
                           console.error("Failed to decode google imgurl", e);
                         }
@@ -646,43 +751,24 @@ export default function CreateKnowledgePage() {
 
                       const note = urlNoteInput.trim() || `Media ${formData.contentImages.length + formData.videos.length + formData.files.length + 1}`;
                       
-                      let type = urlMediaType;
-                      if (type === "auto") {
-                        const lowerUrl = url.toLowerCase();
-                        const lowerNote = note.toLowerCase();
-
-                        const isGoogleHostedImage = url.includes('googleusercontent.com') || url.includes('gstatic.com') || url.includes('google.com/imgres') || wasGoogleImageSearch;
-                        const isImageExtension = url.match(/\.(jpeg|jpg|gif|png|webp|svg|bmp|tiff|ico)(\?.*)?$/i);
-                        const isOtherImageHost = url.includes('images.unsplash.com') || url.includes('i.imgur.com') || url.includes('pbs.twimg.com') || url.includes('instagram') || url.includes('pinimg.com');
-                        const isYouTubeMatch = url.includes("youtube.com") || url.includes("youtu.be");
-                        const isVideoExtension = url.match(/\.(mp4|webm|ogg|mov|avi|mkv|flv|m4v)(\?.*)?$/i);
-
-                        const isVideoKeyword = lowerUrl.includes("video") || lowerNote.includes("video") || lowerNote.includes("recording") || lowerNote.includes("clip") || lowerNote.includes("mp4") || lowerNote.includes("mov") || lowerNote.includes("movie");
-                        const isImageKeyword = lowerNote.includes("image") || lowerNote.includes("photo") || lowerNote.includes("pic") || lowerNote.includes("screenshot") || lowerNote.includes("thumb");
-
-                        if (isYouTubeMatch || isVideoExtension || isVideoKeyword) {
-                          type = "video";
-                        } else if (isGoogleHostedImage || isImageExtension || isOtherImageHost || isImageKeyword) {
-                          type = "image";
-                        } else if (url.includes('drive.google.com')) {
-                          // Drive URLs default to video unless specified as image keyword or file
-                          type = "video";
-                        } else {
-                          type = "document";
-                        }
+                      let finalType = urlMediaType;
+                      if (finalType === "auto") {
+                        finalType = autoDetectMediaType(url, note);
                       }
 
-                      if (type === "image") {
+                      if (finalType === "image") {
                         setFormData({ ...formData, contentImages: [...formData.contentImages, { id: `img-${Date.now()}`, url: url, note }] });
-                      } else if (type === "video") {
+                        toast.success(`Media added as IMAGE (${urlMediaType === "auto" ? "Auto-Detected" : "Manual"})!`);
+                      } else if (finalType === "video") {
                         setFormData({ ...formData, videos: [...formData.videos, { id: `vid-${Date.now()}`, title: note, url: url, duration: "Unknown" }] });
+                        toast.success(`Media added as VIDEO (${urlMediaType === "auto" ? "Auto-Detected" : "Manual"})!`);
                       } else {
                         setFormData({ ...formData, files: [...formData.files, { id: `file-${Date.now()}`, name: note, url: url, size: "Unknown", type: "Web Link" }] });
+                        toast.success(`Media added as DOCUMENT (${urlMediaType === "auto" ? "Auto-Detected" : "Manual"})!`);
                       }
                       
                       setUrlInput("");
                       setUrlNoteInput("");
-                      toast.success("Media added!");
                     }}
                   >
                     <Upload className="h-4 w-4" />
