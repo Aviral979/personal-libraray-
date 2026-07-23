@@ -648,13 +648,28 @@ export default function CreateKnowledgePage() {
                       
                       let type = urlMediaType;
                       if (type === "auto") {
+                        const lowerUrl = url.toLowerCase();
+                        const lowerNote = note.toLowerCase();
+
                         const isGoogleHostedImage = url.includes('googleusercontent.com') || url.includes('gstatic.com') || url.includes('google.com/imgres') || wasGoogleImageSearch;
-                        const isImageMatch = isGoogleHostedImage || url.match(/\.(jpeg|jpg|gif|png|webp|svg|bmp|tiff|ico)(\?.*)?$/i) || url.includes('drive.google.com/file/d/') || url.includes('drive.google.com/open?id=') || url.includes('images.unsplash.com') || url.includes('i.imgur.com') || url.includes('pbs.twimg.com') || url.includes('instagram') || url.includes('pinimg.com');
+                        const isImageExtension = url.match(/\.(jpeg|jpg|gif|png|webp|svg|bmp|tiff|ico)(\?.*)?$/i);
+                        const isOtherImageHost = url.includes('images.unsplash.com') || url.includes('i.imgur.com') || url.includes('pbs.twimg.com') || url.includes('instagram') || url.includes('pinimg.com');
                         const isYouTubeMatch = url.includes("youtube.com") || url.includes("youtu.be");
-                        const isVideoMatch = url.match(/\.(mp4|webm|ogg)(\?.*)?$/i) || isYouTubeMatch;
-                        if (isImageMatch && !isYouTubeMatch) type = "image";
-                        else if (isVideoMatch) type = "video";
-                        else type = "document";
+                        const isVideoExtension = url.match(/\.(mp4|webm|ogg|mov|avi|mkv|flv|m4v)(\?.*)?$/i);
+
+                        const isVideoKeyword = lowerUrl.includes("video") || lowerNote.includes("video") || lowerNote.includes("recording") || lowerNote.includes("clip") || lowerNote.includes("mp4") || lowerNote.includes("mov") || lowerNote.includes("movie");
+                        const isImageKeyword = lowerNote.includes("image") || lowerNote.includes("photo") || lowerNote.includes("pic") || lowerNote.includes("screenshot") || lowerNote.includes("thumb");
+
+                        if (isYouTubeMatch || isVideoExtension || isVideoKeyword) {
+                          type = "video";
+                        } else if (isGoogleHostedImage || isImageExtension || isOtherImageHost || isImageKeyword) {
+                          type = "image";
+                        } else if (url.includes('drive.google.com')) {
+                          // Drive URLs default to video unless specified as image keyword or file
+                          type = "video";
+                        } else {
+                          type = "document";
+                        }
                       }
 
                       if (type === "image") {

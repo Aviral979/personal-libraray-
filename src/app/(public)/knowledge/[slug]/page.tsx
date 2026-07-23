@@ -43,6 +43,29 @@ function toDriveDirectUrl(url: string): string {
   return cleanUrl;
 }
 
+// Helper: Convert Google Drive link to embeddable preview player URL
+function toDriveEmbedUrl(url: string): string {
+  if (!url) return url;
+  let cleanUrl = url.trim();
+  const fileMatch = cleanUrl.match(/drive\.google\.com\/file\/d\/([^/]+)/);
+  if (fileMatch && fileMatch[1]) {
+    return `https://drive.google.com/file/d/${fileMatch[1]}/preview`;
+  }
+  const openMatch = cleanUrl.match(/drive\.google\.com\/open\?id=([^&]+)/);
+  if (openMatch && openMatch[1]) {
+    return `https://drive.google.com/file/d/${openMatch[1]}/preview`;
+  }
+  const ucMatch = cleanUrl.match(/drive\.google\.com\/uc\?.*id=([^&]+)/);
+  if (ucMatch && ucMatch[1]) {
+    return `https://drive.google.com/file/d/${ucMatch[1]}/preview`;
+  }
+  if (cleanUrl.includes('drive.google.com')) {
+    if (cleanUrl.includes('/preview')) return cleanUrl;
+    return cleanUrl.replace(/\/view.*$/, '/preview').replace(/\?usp=sharing/, '');
+  }
+  return cleanUrl;
+}
+
 // This is the detail page for displaying knowledge items
 export default function KnowledgeDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   // Next.js 16: params is a Promise, unwrap it with React.use()
@@ -446,6 +469,14 @@ export default function KnowledgeDetailPage({ params }: { params: Promise<{ slug
                     title={activeMedia.title}
                     className="w-full h-full border-none" 
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                    allowFullScreen
+                  />
+                ) : activeMedia.url.includes("drive.google.com") ? (
+                  <iframe 
+                    src={toDriveEmbedUrl(activeMedia.url)} 
+                    title={activeMedia.title}
+                    className="w-full h-full border-none bg-black" 
+                    allow="autoplay; encrypted-media; picture-in-picture" 
                     allowFullScreen
                   />
                 ) : (
